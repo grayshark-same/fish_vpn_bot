@@ -52,6 +52,8 @@ async def admin_callbacks(callback: CallbackQuery):
         f'Всего юзеров: {amount_of_users}\n',
         reply_markup=admin_panel)
 
+        
+          
 
 if __name__ == '__main__':
     print('bot active')
