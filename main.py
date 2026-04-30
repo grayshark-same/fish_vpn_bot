@@ -36,6 +36,8 @@ admin_panel = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='
                                                     [InlineKeyboardButton(text='Рассылка', callback_data='newsletter', style='danger')]])
 
 admin_return_button = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Назад', callback_data='admin_return')]])
+
+
 class Admin(Filter):
     def __init__(self, id: str) -> None:
         self.id = id
@@ -43,27 +45,20 @@ class Admin(Filter):
     async def __call__(self, message: Message) -> bool:
         return str(message.from_user.id) in admins
     
-    
-@dp.message(Admin)
+
+@dp.message(Command(commands='admin'), Admin)
 async def commands(message:Message):
-    # if str(message.from_user.id) in admins:
-    if Command(commands='start'):
-        await message.answer('Меню:')
-        await add_user(message.from_user.id, message.from_user.username)
-    elif Command(commands='admin') and Admin:
-        await message.answer('---ADMIN_PANEL---\n\n' \
-        f'Баланс бота: {bot_balance}\n' \
-        f'Всего юзеров: {amount_of_users}\n',
-        reply_markup=admin_panel)
-    else:
-        print(admins)
-        print(message.from_user.id)
+    await message.answer('---ADMIN_PANEL---\n\n' \
+    f'Баланс бота: {bot_balance}\n' \
+    f'Всего юзеров: {amount_of_users}\n',
+    reply_markup=admin_panel)
+    
 
 @dp.message()
 async def start(message:Message):
     if Command(commands='start'):
         await message.answer('Меню:')
-        
+        await add_user(message.from_user.id, message.from_user.username)
 
 @dp.callback_query(Admin)
 async def admin_callbacks(callback: CallbackQuery):

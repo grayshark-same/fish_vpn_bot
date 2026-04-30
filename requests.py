@@ -7,5 +7,8 @@ from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, C
 async def add_user(tg_id: int, username: str):
     with sqlite3.connect('users.db') as db:
         cur = db.cursor()
-
-        cur.execute("INSERT INTO users (tg_id, username) VALUES(?, ?)",(tg_id, username))
+        cur.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
+        user = cur.fetchone()
+        print(user)
+        if not user:
+            cur.execute("INSERT INTO users (tg_id, username) VALUES(?, ?)",(tg_id, username))
