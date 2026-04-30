@@ -1,1 +1,0 @@
-# fish_vpn_bot
