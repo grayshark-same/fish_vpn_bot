@@ -52,10 +52,7 @@ async def admin_callbacks(callback: CallbackQuery):
         f'Всего юзеров: {amount_of_users}\n',
         reply_markup=admin_panel)
 
-        
-
-
-
+    
 
 
 
