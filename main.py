@@ -136,7 +136,7 @@ async def callbacks(callback:CallbackQuery, state:FSMContext):
             await add_balance(tg_id=id, summ=summ)
         elif data.startswith('decline_'):
             id = data.split('_')[1]
-            await bot.send_message(chat_id=id, text=f'Заявка на пополнение баланса отклонена, для дополнительной информации обратитесь к ')
+            await bot.send_message(chat_id=id, text=f'Заявка на пополнение баланса отклонена, для дополнительной информации обратитесь к {admin}')
 
 @dp.message(States.summ)
 async def rf_card(message: Message, state: FSMContext):
