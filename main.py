@@ -143,7 +143,7 @@ async def rf_card(message: Message, state: FSMContext):
     await state.update_data(summ=int(message.text))
     await message.answer(text=f'Переведите на карту <code>{card}</code> {message.text}₽, после пришлите чек об оплате',parse_mode='HTML')
     await state.set_state(States.pay_receipt)
-    # await state.update_data(summ=int(message.text))
+    # await state.update_data(summ=int(message.text) )
 
 
 @dp.message(States.pay_receipt, F.photo)
