@@ -33,11 +33,20 @@ async def get_user_balance(tg_id: int):
         cur.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
         balance = cur.fetchone()
         if balance[0] > 0:
-            print(balance)
-            return int(balance)
+            print(balance[0])
+            return int(balance[0])
         return 0
 
 async def add_balance(tg_id: int, summ: int):
     with sqlite3.connect('users.db') as db:
         cur = db.cursor()
         cur.execute("UPDATE users SET balance = balance + ? WHERE tg_id = ?", (summ, tg_id))
+
+async def get_user_end_date(tg_id: int):
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT end_of_sub FROM users WHERE tg_id = ?", (tg_id,))
+        end_date = cur.fetchone()
+        print(end_date)
+        return end_date
+    

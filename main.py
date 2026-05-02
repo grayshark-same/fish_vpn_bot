@@ -61,14 +61,20 @@ async def commands(message:Message):
         reply_markup=admin_panel)
     
 
-@dp.message(StateFilter(default_state))
+
+
 async def start(message:Message):
-    
     buttons = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Оформить подписку', callback_data="sub", style='success')],
                                                     [InlineKeyboardButton(text='Управление подпиской', callback_data="settings", style='primary')],
                                                     [InlineKeyboardButton(text='Пополнить баланс', callback_data="top_up_balance")]])
     await message.answer('Меню', reply_markup=buttons)
+    await get_user_end_date(message.from_user.id)
     await add_user(message.from_user.id, message.from_user.username)
+
+
+@dp.message(StateFilter(default_state))
+async def strt(message:Message):
+    await start(message)
 
 
 @dp.callback_query()
@@ -114,10 +120,7 @@ async def callbacks(callback:CallbackQuery, state:FSMContext):
         await callback.message.edit_text(text='Введи сумму пополнения:')
 
     elif data == 'menu':
-        buttons = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Оформить подписку', callback_data="sub", style='success')],
-                                                    [InlineKeyboardButton(text='Управление подпиской', callback_data="settings", style='primary')]])
-        await callback.message.edit_text('Меню', reply_markup=buttons)
-        await add_user(user.id, user.username)
+        await start(callback.message)
 
     elif str(user.id) in admins:
         if data =='statistic':
