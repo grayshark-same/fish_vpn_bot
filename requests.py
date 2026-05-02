@@ -42,11 +42,19 @@ async def add_balance(tg_id: int, summ: int):
         cur = db.cursor()
         cur.execute("UPDATE users SET balance = balance + ? WHERE tg_id = ?", (summ, tg_id))
 
-async def get_user_end_date(tg_id: int):
+async def get_user_sub(tg_id: int):
     with sqlite3.connect('users.db') as db:
         cur = db.cursor()
         cur.execute("SELECT end_of_sub FROM users WHERE tg_id = ?", (tg_id,))
-        end_date = cur.fetchone()
-        print(end_date)
-        return end_date
-    
+        row = cur.fetchone()
+        if not row or not row[0]:
+            return False, None
+        end_date = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+        is_active = end_date > datetime.datetime.now()
+        return is_active, end_date
+
+async def get_users_count():
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT COUNT(*) FROM users")
+        return cur.fetchone()[0]

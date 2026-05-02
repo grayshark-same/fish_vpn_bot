@@ -1,3 +1,5 @@
 \venv
 .env
 users.db
+\__pycache__
+reports.db
