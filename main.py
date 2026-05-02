@@ -63,12 +63,30 @@ async def commands(message:Message):
 
 @dp.message(StateFilter(default_state))
 async def start(message:Message):
-    
-    buttons = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Оформить подписку', callback_data="sub", style='success')],
-                                                    [InlineKeyboardButton(text='Управление подпиской', callback_data="settings", style='primary')],
-                                                    [InlineKeyboardButton(text='Пополнить баланс', callback_data="top_up_balance")]])
-    await message.answer('Меню', reply_markup=buttons)
     await add_user(message.from_user.id, message.from_user.username)
+
+    is_active, end_date = await get_user_sub(message.from_user.id)
+    status = "активна" if is_active else "не активна"
+    date_str = end_date.strftime("%d.%m.%Y") if end_date else "—"
+
+    text = (
+        "<b>Fish VPN </b> 🚀 – Стабильный, защищенный VPN.\n\n"
+        "<b>🇷🇺 Белые списки | 🇸🇪 Швеция | 🇳🇱 Нидерланды  | 🇪🇪 Эстония\n"
+        "🇫🇮 Финляндия | 🇺🇸 США | 🇱🇻 Латвия | 🇩🇪 Германия\n"
+        "🇬🇧 Великобритания | 🇫🇷 Франция | 🇰🇿 Казахстан | 🇧🇾 Беларусь</b>\n\n"
+        f"<blockquote>📌Ваша подписка:\n"
+        f"Статус: <code>{status}</code>\n"
+        f"Действует до: <code>{date_str}</code>\n"
+        f"Лимит устройств: <code>1</code></blockquote>"
+    )
+
+    buttons = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='Управление подпиской', callback_data="settings", icon_custom_emoji_id="6032742198179532882")],
+        [InlineKeyboardButton(text='Продлить', callback_data="extend", icon_custom_emoji_id="5769126056262898415"),
+         InlineKeyboardButton(text='Поддержка', callback_data="support", icon_custom_emoji_id="6030329749409108167")],
+        [InlineKeyboardButton(text='Что это?', callback_data="about", icon_custom_emoji_id="6032594876506312598")]
+    ])
+    await message.answer(text, reply_markup=buttons, parse_mode="HTML")
 
 
 @dp.callback_query()
