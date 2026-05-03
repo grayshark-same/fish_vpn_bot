@@ -1,6 +1,7 @@
 import os
 import datetime
 from aiogram import Dispatcher, Bot, F
+from aiogram.types import FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State, default_state
 from aiogram.filters import Command, StateFilter
@@ -59,6 +60,17 @@ class States(StatesGroup):
     newsletter_photo = State()
     newsletter_buttons = State()
 
+# @dp.message(F.photo)
+# async def get_file_id(message: Message):
+#     print(message.photo[-1].file_id)
+
+async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, parse_mode='HTML'):
+    if callback.message.photo:
+        await callback.message.delete()
+        await callback.message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    else:
+        await callback.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+
 
 def back_menu_btn():
     return [InlineKeyboardButton(text='« Главное Меню', callback_data='menu')]
@@ -66,6 +78,7 @@ def back_menu_btn():
 
 def back_btn(cb):
     return [InlineKeyboardButton(text='« Назад', callback_data=cb)]
+
 
 
 async def send_main_menu(target, user_id, username=None):
@@ -76,10 +89,10 @@ async def send_main_menu(target, user_id, username=None):
     balance = await get_user_balance(user_id)
 
     text = (
-        "<b><tg-emoji emoji-id='5206376793778437124'>🌊</tg-emoji> Fish VPN</b> – Стабильный, защищённый VPN.\n\n"
-        "<b>🇷🇺 Белые списки | 🇸🇪 Швеция | 🇳🇱 Нидерланды | 🇪🇪 Эстония\n"
-        "🇫🇮 Финляндия | 🇺🇸 США | 🇱🇻 Латвия | 🇩🇪 Германия\n"
-        "🇬🇧 Великобритания | 🇫🇷 Франция | 🇰🇿 Казахстан | 🇧🇾 Беларусь</b>\n\n"
+        "<b><tg-emoji emoji-id='5206376793778437124'>🌊</tg-emoji> Fish VPN</b> – Стабильный, защищенный и анонимный VPN.\n\n"
+        "<b>🇷🇺 Белые списки \n• 🇸🇪 Швеция \n• 🇳🇱 Нидерланды \n• 🇪🇪 Эстония\n"
+        "• 🇫🇮 Финляндия \n• 🇺🇸 США \n• 🇱🇻 Латвия \n• 🇩🇪 Германия\n"
+        "• 🇬🇧 Великобритания \n• 🇫🇷 Франция \n• 🇰🇿 Казахстан \n• 🇧🇾 Беларусь</b>\n\n"
         f"<blockquote>📌 Ваша подписка:\n"
         f"Статус: <code>{status}</code>\n"
         f"Действует до: <code>{date_str}</code>\n"
@@ -93,10 +106,15 @@ async def send_main_menu(target, user_id, username=None):
          InlineKeyboardButton(text='Поддержка', callback_data='support', icon_custom_emoji_id='6030329749409108167')],
         [InlineKeyboardButton(text='Что это?', callback_data='about', icon_custom_emoji_id='6032594876506312598')]
     ])
+    photo = FSInputFile('menu.png')
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
+        if target.message.photo:
+            await target.message.edit_caption(caption=text, reply_markup=buttons, parse_mode='HTML')
+        else:
+            await target.message.delete()
+            await target.message.answer_photo(photo=photo, caption=text, reply_markup=buttons, parse_mode='HTML')
     else:
-        await target.answer(text, reply_markup=buttons, parse_mode='HTML')
+        await target.answer_photo(photo=photo, caption=text, reply_markup=buttons, parse_mode='HTML')
 
 
 
@@ -150,7 +168,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text='📋 Универсальная ссылка', callback_data='universal_link')],
             [back_menu_btn()[0]]
         ])
-        await callback.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
+        await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data == 'connect':
         text = "📍Главное меню » <tg-emoji emoji-id='6032742198179532882'>⚙️</tg-emoji> Управление подпиской » 🔗 <b>Подключиться к VPN</b>\n\nВыберите устройство:"
@@ -161,7 +179,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
              InlineKeyboardButton(text='💻 MacOS', callback_data='connect_macos')],
             [back_btn('settings')[0]]
         ])
-        await callback.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
+        await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data.startswith('connect_'):
         platform = data.replace('connect_', '')
@@ -183,7 +201,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             rows.append([InlineKeyboardButton(text='📥 Скачать приложение', url=download_url)])
         rows.append([InlineKeyboardButton(text='🔗 Активировать VPN-профиль', callback_data=f'activate_{platform}')])
         rows.append([back_btn('connect')[0]])
-        await callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows), parse_mode='HTML')
+        await edit_or_answer(callback, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
     elif data.startswith('activate_'):
         await callback.answer("Функция в разработке", show_alert=True)
@@ -213,7 +231,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text=f'⚡️12 месяцев — {plans[12]}₽ ({round(plans[12]/12)}₽/мес)', callback_data='plan_12')],
             [back_menu_btn()[0]]
         ])
-        await callback.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
+        await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data.startswith('plan_'):
         plan = int(data.replace('plan_', ''))
@@ -228,7 +246,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
              InlineKeyboardButton(text='Крипта', callback_data=f'pay_{plan}_crypto', icon_custom_emoji_id='5195308461193182892')],
             [back_btn('extend')[0]]
         ])
-        await callback.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
+        await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data.startswith('pay_'):
         parts = data.split('_')
@@ -238,10 +256,10 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         else:
             await state.update_data(plan=plan, summ=plans[plan])
             await state.set_state(States.pay_receipt)
-            await callback.message.edit_text(
-                f"Переведите <b>{plans[plan]}₽</b> на карту <code>{card}</code>\n\n"
-                f"После оплаты отправьте фото чека.",
-                parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'plan_{plan}')])
+            await edit_or_answer(
+                callback,
+                f"Переведите <b>{plans[plan]}₽</b> на карту <code>{card}</code>\n\nПосле оплаты отправьте фото чека.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'plan_{plan}')])
             )
 
     elif data == 'support':
@@ -254,7 +272,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text='Поддержка', url=f'https://t.me/{admin.lstrip("@")}', icon_custom_emoji_id='6030329749409108167')],
             [back_menu_btn()[0]]
         ])
-        await callback.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
+        await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data == 'about':
         text = ('''📍Главное меню » <tg-emoji emoji-id="6032594876506312598">👥</tg-emoji><b>Что это?</b>
@@ -276,12 +294,12 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
 • Пробный период — попробуйте бесплатно
 • Доступная цена — качество без переплат</blockquote>'''
         )
-        await callback.message.edit_text(
+        await edit_or_answer(
+            callback,
             text,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Политика Конфиденциальности', icon_custom_emoji_id="6037397706505195857", url='https://telegra.ph/Politika-konfidencialnosti-servisa-Fish-VPN-05-03')],
                                                                [InlineKeyboardButton(text='Пользовательское соглашение', icon_custom_emoji_id="6039422865189638057", url='https://telegra.ph/Polzovatelskoe-soglashenie-servisa-Fish-VPN-05-03')],
-                                                               [back_menu_btn()[0]]]),
-            parse_mode='HTML'
+                                                               [back_menu_btn()[0]]])
         )
 
     elif str(user.id) in admins:
