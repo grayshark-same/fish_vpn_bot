@@ -55,6 +55,9 @@ admin_return_button = InlineKeyboardMarkup(inline_keyboard=[
 
 class States(StatesGroup):
     pay_receipt = State()
+    newsletter_text = State()
+    newsletter_photo = State()
+    newsletter_buttons = State()
 
 
 def back_menu_btn():
@@ -108,23 +111,22 @@ async def start_handler(message: Message):
 async def admin_command(message: Message):
     if str(message.from_user.id) in admins:
         count = await get_users_count()
-        total_profit = None
-        todays_purchases = None
-        todays_profit = None
+        total_profit = 0
+        todays_purchases = 0
+        todays_profit = 0
+        bot_balance = 0
         await message.answer(
             f'''---------ADMIN_PANEL---------
             
-Баланс бота: {bot_balance}
-Всего заработано: {total_profit}
+<tg-emoji emoji-id="5258204546391351475">💰</tg-emoji><b>Баланс бота</b>: <code>{bot_balance}</code>
+<tg-emoji emoji-id="5890848474563352982">🪙</tg-emoji>Всего заработано: <code>{total_profit}</code>
 
-Всего юзеров: {count}
-Покупок сегодня: {todays_purchases}
-Прибыль сегодня: {todays_profit}
+<tg-emoji emoji-id="6032594876506312598">👥</tg-emoji>Всего юзеров: {count}
+<tg-emoji emoji-id="5902206159095339799">🤑</tg-emoji>Прибыль сегодня: <code>{todays_profit}</code>
             ''',
-            reply_markup=admin_panel
+            reply_markup=admin_panel, parse_mode='html'
         ),
-        
-
+    
 
 
 @dp.callback_query()
@@ -186,6 +188,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
     elif data.startswith('activate_'):
         await callback.answer("Функция в разработке", show_alert=True)
 
+    elif data.endswith('_sbp'):
+        await callback.answer("Функция в разработке", show_alert=True)
+
     elif data == 'devices':
         await callback.answer("Функция в разработке", show_alert=True)
 
@@ -236,42 +241,46 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(
                 f"Переведите <b>{plans[plan]}₽</b> на карту <code>{card}</code>\n\n"
                 f"После оплаты отправьте фото чека.",
-                parse_mode='HTML'
+                parse_mode='HTML', reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'plan_{plan}')])
             )
 
     elif data == 'support':
         text = (
-            f"📍Главное меню » <b>💬 Поддержка</b>\n\n"
+            f"📍Главное меню » <b><tg-emoji emoji-id='6030329749409108167'>💬</tg-emoji> Поддержка</b>\n\n"
             f"Скопируйте ваш ID и отправьте в поддержку с описанием проблемы.\n\n"
-            f"📋 Ваш ID: <code>{user.id}</code>"
+            f"📋 Ваш ID: <blockquote>{user.id}</blockquote>"
         )
         buttons = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='💬 Поддержка', url=f'https://t.me/{admin.lstrip("@")}')],
+            [InlineKeyboardButton(text='Поддержка', url=f'https://t.me/{admin.lstrip("@")}', icon_custom_emoji_id='6030329749409108167')],
             [back_menu_btn()[0]]
         ])
         await callback.message.edit_text(text, reply_markup=buttons, parse_mode='HTML')
 
     elif data == 'about':
-        text = (
-            "📍Главное меню » <b>👥 Что это?</b>\n\n"
-            "⚡️ <b>Молниеносная скорость:</b>\n"
-            "• До 25 Гбит/с — смотрите 4K без задержек\n"
-            "• 13+ Серверов — стабильное соединение\n"
-            "• VLESS + Reality — современный протокол\n\n"
-            "🛡️ <b>Максимальная защита:</b>\n"
-            "• Никаких логов — ваша приватность под защитой\n"
-            "• Умное шифрование — ваши данные в безопасности\n"
-            "• Защита от утечек — полная анонимность\n\n"
-            "✨ <b>Почему выбирают нас:</b>\n"
-            "• Никакой рекламы — чистый интернет\n"
-            "• Настройка за 1 минуту — всё просто\n"
-            "• Поддержка 24/7 — всегда на связи\n"
-            "• Пробный период — попробуйте бесплатно\n"
-            "• Доступная цена — качество без переплат"
+        text = ('''📍Главное меню » <tg-emoji emoji-id="6032594876506312598">👥</tg-emoji><b>Что это?</b>
+
+<tg-emoji emoji-id="5920515922505765329">⚡️</tg-emoji>Молниеносная скорость:
+<blockquote>• До 25 Гбит/с — смотрите 4K без задержек
+• 13+ Серверов — стабильное соединение
+• VLESS + Reality — современный протокол</blockquote>
+
+<tg-emoji emoji-id="6039729023343400390">🔨</tg-emoji><b>Максимальная защита:</b>
+<blockquote>• Никаких логов — ваша приватность под защитой
+• Умное шифрование — ваши данные в безопасности
+• Защита от утечек — полная анонимность</blockquote>
+
+<tg-emoji emoji-id="5890925363067886150">✨</tg-emoji><b>Почему выбирают нас:</b>
+<blockquote>• Никакой рекламы — чистый интернет
+• Настройка за 1 минуту — всё просто 
+• Поддержка 24/7 — всегда на связи
+• Пробный период — попробуйте бесплатно
+• Доступная цена — качество без переплат</blockquote>'''
         )
         await callback.message.edit_text(
             text,
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[back_menu_btn()[0]]]),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Политика Конфиденциальности', icon_custom_emoji_id="6037397706505195857", url='https://telegra.ph/Politika-konfidencialnosti-servisa-Fish-VPN-05-03')],
+                                                               [InlineKeyboardButton(text='Пользовательское соглашение', icon_custom_emoji_id="6039422865189638057", url='https://telegra.ph/Polzovatelskoe-soglashenie-servisa-Fish-VPN-05-03')],
+                                                               [back_menu_btn()[0]]]),
             parse_mode='HTML'
         )
 
@@ -298,14 +307,120 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         elif data.startswith('accept_'):
             _, plan, uid = data.split('_')
             plan, uid = int(plan), int(uid)
-            await callback.message.delete()
+            print(uid)
+            try:
+                await callback.message.delete()
+            except:
+                pass
             await add_sub(tg_id=uid, plan=plan)
+            await add_report(money=plans[plan])
             await bot.send_message(chat_id=uid, text=f'✅ Подписка на {plan_names[plan]} активирована!')
         elif data.startswith('decline_'):
             uid = int(data.split('_')[1])
             await callback.message.delete()
             await bot.send_message(chat_id=uid, text=f'❌ Чек отклонён. Обратитесь в поддержку: @{admin.lstrip("@")}')
+        elif data == 'newsletter':
+            await state.set_state(States.newsletter_text)
+            await callback.message.answer('✍️ Введите текст рассылки:')
+        elif data == 'nl_skip_photo':
+            await state.set_state(States.newsletter_buttons)
+            await callback.message.answer(
+                '🔗 Введите кнопки в формате:\n<code>Текст кнопки | https://ссылка</code>\n\nКаждая кнопка с новой строки. Или нажмите «Пропустить».',
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пропустить', callback_data='nl_skip_buttons')]])
+            )
+        elif data == 'nl_skip_buttons':
+            fsm_data = await state.get_data()
+            await _send_newsletter_preview(callback.message, fsm_data)
+        elif data == 'nl_confirm':
+            fsm_data = await state.get_data()
+            await state.clear()
+            await callback.message.edit_text('📤 Рассылка запущена...')
+            count = await _do_newsletter(fsm_data)
+            await callback.message.edit_text(f'✅ Рассылка отправлена {count} пользователям.')
+        elif data == 'nl_cancel':
+            await state.clear()
+            await callback.message.edit_text('❌ Рассылка отменена.')
 
+
+
+async def _parse_buttons(text: str) -> list:
+    rows = []
+    for line in text.strip().splitlines():
+        if '|' in line:
+            label, url = line.split('|', 1)
+            rows.append([InlineKeyboardButton(text=label.strip(), url=url.strip())])
+    return rows
+
+
+async def _send_newsletter_preview(message: Message, fsm_data: dict):
+    text = fsm_data.get('nl_text', '')
+    photo = fsm_data.get('nl_photo')
+    buttons_text = fsm_data.get('nl_buttons', '')
+    rows = await _parse_buttons(buttons_text) if buttons_text else []
+    rows.append([
+        InlineKeyboardButton(text='✅ Отправить', callback_data='nl_confirm'),
+        InlineKeyboardButton(text='❌ Отмена', callback_data='nl_cancel')
+    ])
+    markup = InlineKeyboardMarkup(inline_keyboard=rows)
+    await message.answer('👁 <b>Предпросмотр:</b>', parse_mode='HTML')
+    if photo:
+        await message.answer_photo(photo=photo, caption=text, parse_mode='HTML', reply_markup=markup)
+    else:
+        await message.answer(text, parse_mode='HTML', reply_markup=markup)
+
+
+async def _do_newsletter(fsm_data: dict) -> int:
+    text = fsm_data.get('nl_text', '')
+    photo = fsm_data.get('nl_photo')
+    buttons_text = fsm_data.get('nl_buttons', '')
+    rows = await _parse_buttons(buttons_text) if buttons_text else []
+    markup = InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
+
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT tg_id FROM users")
+        user_ids = [row[0] for row in cur.fetchall()]
+
+    count = 0
+    for uid in user_ids:
+        try:
+            if photo:
+                await bot.send_photo(chat_id=uid, photo=photo, caption=text, parse_mode='HTML', reply_markup=markup)
+            else:
+                await bot.send_message(chat_id=uid, text=text, parse_mode='HTML', reply_markup=markup)
+            count += 1
+        except:
+            pass
+    return count
+
+
+@dp.message(States.newsletter_text)
+async def newsletter_get_text(message: Message, state: FSMContext):
+    await state.update_data(nl_text=message.text or message.caption or '')
+    await state.set_state(States.newsletter_photo)
+    await message.answer(
+        '🖼 Прикрепите фото или нажмите «Пропустить»:',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пропустить', callback_data='nl_skip_photo')]])
+    )
+
+
+@dp.message(States.newsletter_photo, F.photo)
+async def newsletter_get_photo(message: Message, state: FSMContext):
+    await state.update_data(nl_photo=message.photo[-1].file_id)
+    await state.set_state(States.newsletter_buttons)
+    await message.answer(
+        '🔗 Введите кнопки в формате:\n<code>Текст кнопки | https://ссылка</code>\n\nКаждая кнопка с новой строки. Или нажмите «Пропустить».',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пропустить', callback_data='nl_skip_buttons')]])
+    )
+
+
+@dp.message(States.newsletter_buttons)
+async def newsletter_get_buttons(message: Message, state: FSMContext):
+    await state.update_data(nl_buttons=message.text)
+    fsm_data = await state.get_data()
+    await _send_newsletter_preview(message, fsm_data)
 
 
 @dp.message(States.pay_receipt, F.photo)
@@ -316,8 +431,8 @@ async def receive_receipt(message: Message, state: FSMContext):
     summ = fsm_data.get('summ')
 
     buttons = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='✅ Принять', callback_data=f'accept_{plan}_{message.from_user.id}', style='success')],
-        [InlineKeyboardButton(text='❌ Отклонить', callback_data=f'decline_{message.from_user.id}', style='danger')]
+        [InlineKeyboardButton(text='Принять', callback_data=f'accept_{plan}_{message.from_user.id}', style='success')],
+        [InlineKeyboardButton(text='Отклонить', callback_data=f'decline_{message.from_user.id}', style='danger')]
     ])
     for admin_id in admins:
         await bot.send_photo(

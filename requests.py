@@ -58,3 +58,20 @@ async def get_users_count():
         cur = db.cursor()
         cur.execute("SELECT COUNT(*) FROM users")
         return cur.fetchone()[0]
+
+async def add_report(money: int):
+    today = datetime.date.today().isoformat()
+    with sqlite3.connect('reports.db') as db:
+        cur = db.cursor()
+        cur.execute("INSERT OR IGNORE INTO reports_for_day (date, money, transactions) VALUES (?, 0, 0)", (today,))
+        cur.execute("UPDATE reports_for_day SET money = money + ?, transactions = transactions + 1 WHERE date(date) = ?", (money, today))
+
+async def get_report_for_days(days: int):
+    with sqlite3.connect('reports.db') as db:
+        cur = db.cursor()
+        since = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
+        cur.execute('SELECT money, transactions, users FROM reports_for_day WHERE date(date) >= ?', (since,))
+        reports = cur.fetchall()
+        print(reports)
+        return reports
+        
