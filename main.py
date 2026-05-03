@@ -289,19 +289,18 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text('statistic', reply_markup=admin_return_button)
         elif data == 'admin_return':
             count = await get_users_count()
-            total_profit = None
-            todays_purchases = None
-            todays_profit = None
+            total_profit = 0
+            todays_purchases = 0
+            todays_profit = 0
+            bot_balance = 0
             await callback.message.edit_text(
                 f'''---------ADMIN_PANEL---------
-                
-    Баланс бота: {bot_balance}
-    Всего заработано: {total_profit}
 
-    Всего юзеров: {count}
-    Покупок сегодня: {todays_purchases}
-    Прибыль сегодня: {todays_profit}
-                ''',
+<tg-emoji emoji-id="5258204546391351475">💰</tg-emoji><b>Баланс бота</b>: <code>{bot_balance}</code>
+<tg-emoji emoji-id="5890848474563352982">🪙</tg-emoji>Всего заработано: <code>{total_profit}</code>
+
+<tg-emoji emoji-id="6032594876506312598">👥</tg-emoji>Всего юзеров: {count}
+<tg-emoji emoji-id="5902206159095339799">🤑</tg-emoji>Прибыль сегодня: <code>{todays_profit}</code>''',
                 reply_markup=admin_panel
             )
         elif data.startswith('accept_'):
