@@ -28,7 +28,10 @@ with sqlite3.connect('users.db') as db:
             balance REAL DEFAULT 0.0,
             join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             devices INTEGER DEFAULT 0,
-            end_of_sub TIMESTAMP
+            end_of_sub TIMESTAMP,
+            ref_id INTEGER DEFAULT 0,
+            ref_balance INTEGER DEFAULT 0,
+            ref_procent INTEGER DEFAULT 0
         )
     ''')
 with sqlite3.connect('reports.db') as db:
@@ -55,7 +58,9 @@ admin_return_button = InlineKeyboardMarkup(inline_keyboard=[
 
 
 class States(StatesGroup):
+    summ = State()
     pay_receipt = State()
+    # pay_way = State()
     newsletter_text = State()
     newsletter_photo = State()
     newsletter_buttons = State()
@@ -65,11 +70,14 @@ class States(StatesGroup):
 #     print(message.photo[-1].file_id)
 
 async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, parse_mode='HTML'):
-    if callback.message.photo:
-        await callback.message.delete()
-        await callback.message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
-    else:
-        await callback.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    try:
+        if callback.message.photo:
+            await callback.message.delete()
+            await callback.message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
+        else:
+            await callback.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except Exception:
+        pass
 
 
 def back_menu_btn():
@@ -89,19 +97,20 @@ async def send_main_menu(target, user_id, username=None):
     balance = await get_user_balance(user_id)
 
     text = (
-        "<b><tg-emoji emoji-id='5206376793778437124'>🌊</tg-emoji> Fish VPN</b> – Стабильный, защищенный и анонимный VPN.\n\n"
-        "<b>🇷🇺 Белые списки \n• 🇸🇪 Швеция \n• 🇳🇱 Нидерланды \n• 🇪🇪 Эстония\n"
+        '<b>🎣 Fish VPN</b> – Стабильный, защищенный и анонимный VPN.\n\n'
+        "<b>🇷🇺 Белые списки</b> \n• 🇸🇪 Швеция \n• 🇳🇱 Нидерланды \n• 🇪🇪 Эстония\n"
         "• 🇫🇮 Финляндия \n• 🇺🇸 США \n• 🇱🇻 Латвия \n• 🇩🇪 Германия\n"
-        "• 🇬🇧 Великобритания \n• 🇫🇷 Франция \n• 🇰🇿 Казахстан \n• 🇧🇾 Беларусь</b>\n\n"
+        "• 🇬🇧 Великобритания \n• 🇫🇷 Франция \n• 🇰🇿 Казахстан \n• 🇧🇾 Беларусь\n\n"
         f"<blockquote>📌 Ваша подписка:\n"
         f"Статус: <code>{status}</code>\n"
         f"Действует до: <code>{date_str}</code>\n"
-        f"Лимит устройств: <code>1</code></blockquote>\n"
-        # f"Ваш баланс: <code>{balance}</code></blockquote>"
+        f"Лимит устройств: <code>3</code>\n"
+        f"Ваш баланс: <code>{balance}</code></blockquote>"
         
     )
     buttons = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='Управление подпиской', callback_data='settings', icon_custom_emoji_id='6032742198179532882')],
+        [InlineKeyboardButton(text='Пополнить баланс', callback_data='balance_0', icon_custom_emoji_id='5769126056262898415')],
         [InlineKeyboardButton(text='Продлить', callback_data='extend', icon_custom_emoji_id='5769126056262898415'),
          InlineKeyboardButton(text='Поддержка', callback_data='support', icon_custom_emoji_id='6030329749409108167')],
         [InlineKeyboardButton(text='Что это?', callback_data='about', icon_custom_emoji_id='6032594876506312598')]
@@ -235,33 +244,81 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
 
     elif data.startswith('plan_'):
         plan = int(data.replace('plan_', ''))
+        summ = plans[plan]
         text = (
             f"📍Главное меню » <tg-emoji emoji-id='5258204546391351475'>👛</tg-emoji> Продлить » <b>{plan_names[plan]}</b>\n\n"
             f"<blockquote>⏱️ {plan_days_map[plan]} дней • 3 устройства\n"
-            f"💰 Сумма: {plans[plan]}₽</blockquote>\n"
+            f"💰 Сумма: {summ}₽</blockquote>\n"
         )
         buttons = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='СБП', callback_data=f'pay_{plan}_sbp', icon_custom_emoji_id='5425008221330880308')],
-            [InlineKeyboardButton(text='Карта', callback_data=f'pay_{plan}_card', icon_custom_emoji_id='5312057711091813718'),
-             InlineKeyboardButton(text='Крипта', callback_data=f'pay_{plan}_crypto', icon_custom_emoji_id='5195308461193182892')],
-            [back_btn('extend')[0]]
+        [InlineKeyboardButton(text='Оплатить', callback_data=f'pay_sub_{summ}_{plan}', style='success')],
+        [back_btn(f'extend')[0]]
         ])
         await edit_or_answer(callback, text, reply_markup=buttons)
 
-    elif data.startswith('pay_'):
-        parts = data.split('_')
-        plan, method = int(parts[1]), parts[2]
-        if method == 'crypto':
-            await callback.answer("Оплата криптой в разработке", show_alert=True)
-        else:
-            await state.update_data(plan=plan, summ=plans[plan])
-            await state.set_state(States.pay_receipt)
-            await edit_or_answer(
-                callback,
-                f"Переведите <b>{plans[plan]}₽</b> на карту <code>{card}</code>\n\nПосле оплаты отправьте фото чека.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'plan_{plan}')])
-            )
+    # elif data.startswith('plan_'):
+    #     plan = int(data.replace('plan_', ''))
+    #     text = (
+    #         f"📍Главное меню » <tg-emoji emoji-id='5258204546391351475'>👛</tg-emoji> Продлить » <b>{plan_names[plan]}</b>\n\n"
+    #         f"<blockquote>⏱️ {plan_days_map[plan]} дней • 3 устройства\n"
+    #         f"💰 Сумма: {plans[plan]}₽</blockquote>\n"
+    #     )
+    #     buttons = InlineKeyboardMarkup(inline_keyboard=[
+    #         [InlineKeyboardButton(text='СБП', callback_data=f'pay_{plan}_sbp', icon_custom_emoji_id='5425008221330880308')],
+    #         [InlineKeyboardButton(text='Карта', callback_data=f'pay_{plan}_card', icon_custom_emoji_id='5312057711091813718'),
+    #          InlineKeyboardButton(text='Крипта', callback_data=f'pay_{plan}_crypto', icon_custom_emoji_id='5195308461193182892')],
+    #         [back_btn('extend')[0]]
+    #     ])
+    #     await edit_or_answer(callback, text, reply_markup=buttons)
 
+    elif data.startswith('balance_'):
+        summ = data.split('_')[1]
+        txt = ''
+        if int(summ) != 0:
+            txt = f"💰 Сумма: {summ}₽\n"
+        text = (
+            f"📍Главное меню » <tg-emoji emoji-id='5258204546391351475'>👛</tg-emoji> <b>Пополнение баланса</b>\n\n"
+            f"{txt}"
+            f"Выберите способ оплаты<tg-emoji emoji-id='5429411030960711866'>💬</tg-emoji>"
+        )
+        buttons = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='СБП', callback_data=f'pay_{summ}_sbp', icon_custom_emoji_id='5425008221330880308')],
+            [InlineKeyboardButton(text='Карта', callback_data=f'pay_{summ}_card', icon_custom_emoji_id='5312057711091813718'),
+             InlineKeyboardButton(text='Крипта', callback_data=f'pay_{summ}_crypto', icon_custom_emoji_id='5195308461193182892')],
+            [back_menu_btn()[0]]
+        ])
+        await edit_or_answer(callback, text, reply_markup=buttons)
+
+    elif data.startswith('pay_sub_'):
+        parts = data.split('_')
+        summ, plan = int(parts[2]), int(parts[3])
+        if summ <= await get_user_balance(user.id):
+            await add_balance(summ=-summ, tg_id=user.id)
+            await add_sub(tg_id=user.id, plan=plan)
+            await edit_or_answer(callback, text=f'Подписка успешно куплена!', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[back_menu_btn()[0]]]))
+        else:
+            await edit_or_answer(callback, text=f'На вашем балансе нехватает <code>{await get_user_balance(user.id)-summ}</code>', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пополнить баланс', callback_data=f'balance_{summ}')]]))
+
+    # elif data.startswith('pay_'):
+    #     parts = data.split('_')
+    #     summ, method = int(parts[1]), parts[2]
+    #     await state.update_data(method=method)
+    #     if method == 'crypto':
+    #             await callback.answer("Оплата криптой в разработке", show_alert=True)
+    #     if summ != 0:
+            
+    #         await state.set_state(States.pay_receipt)
+    #         await edit_or_answer(
+    #             callback,
+    #             f"Переведите <b>{summ}₽</b> на карту <code>{card}</code>\n\nПосле оплаты отправьте фото чека.",
+    #             reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'pay_{summ}_{method}')])
+    #         )
+    #     else:
+    #         text = '''Введите сумму пополнения<tg-emoji emoji-id="5427181942934088912">💬</tg-emoji>'''
+    #         await state.set_state(States.summ)
+    #         await edit_or_answer(callback, text=text, parse_mode='html')
+
+        
     elif data == 'support':
         text = (
             f"📍Главное меню » <b><tg-emoji emoji-id='6030329749409108167'>💬</tg-emoji> Поддержка</b>\n\n"
@@ -322,16 +379,17 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
                 reply_markup=admin_panel
             )
         elif data.startswith('accept_'):
-            _, plan, uid = data.split('_')
-            plan, uid = int(plan), int(uid)
+            _, summ, uid = data.split('_')
+            summ, uid = int(summ), int(uid)
             print(uid)
             try:
                 await callback.message.delete()
             except:
                 pass
-            await add_sub(tg_id=uid, plan=plan)
-            await add_report(money=plans[plan])
-            await bot.send_message(chat_id=uid, text=f'✅ Подписка на {plan_names[plan]} активирована!')
+            await add_balance(tg_id=uid,summ=summ)
+            # await add_sub(tg_id=uid, summ=summ)
+            await add_report(money=summ)
+            await bot.send_message(chat_id=uid, text=f'✅ Ваш баланс пополнен на {summ}!', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[back_menu_btn()[0]]]))
         elif data.startswith('decline_'):
             uid = int(data.split('_')[1])
             await callback.message.delete()
@@ -352,12 +410,12 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         elif data == 'nl_confirm':
             fsm_data = await state.get_data()
             await state.clear()
-            await callback.message.edit_text('📤 Рассылка запущена...')
+            await edit_or_answer(callback, '📤 Рассылка запущена...')
             count = await _do_newsletter(fsm_data)
-            await callback.message.edit_text(f'✅ Рассылка отправлена {count} пользователям.')
+            await edit_or_answer(text=f'✅ Рассылка отправлена {count} пользователям.', callback=callback)
         elif data == 'nl_cancel':
             await state.clear()
-            await callback.message.edit_text('❌ Рассылка отменена.')
+            await callback.message.edit_or_answer(callback, '❌ Рассылка отменена.')
 
 
 
@@ -439,16 +497,31 @@ async def newsletter_get_buttons(message: Message, state: FSMContext):
     fsm_data = await state.get_data()
     await _send_newsletter_preview(message, fsm_data)
 
+@dp.message(States.summ)
+async def summ_handler(message: Message, state: FSMContext):
+    if not message.text or not message.text.isdigit():
+        await message.answer('Введите целое число:')
+        return
+    summ = int(message.text)
+    fsm_data = await state.get_data()
+    method = fsm_data['method']
+    await state.update_data(summ=summ)
+    buttons = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='Оплатить', callback_data=f'pay_{summ}_{method}', style='success')],
+        [back_btn(f'balance_0')[0]]
+    ])
+    await message.answer(text=f'Оплатить {summ}₽', reply_markup=buttons)
+    
 
 @dp.message(States.pay_receipt, F.photo)
 async def receive_receipt(message: Message, state: FSMContext):
     photo = message.photo[-1].file_id
     fsm_data = await state.get_data()
-    plan = fsm_data.get('plan')
+    # plan = fsm_data.get('plan')
     summ = fsm_data.get('summ')
 
     buttons = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='Принять', callback_data=f'accept_{plan}_{message.from_user.id}', style='success')],
+        [InlineKeyboardButton(text='Принять', callback_data=f'accept_{summ}_{message.from_user.id}', style='success')],
         [InlineKeyboardButton(text='Отклонить', callback_data=f'decline_{message.from_user.id}', style='danger')]
     ])
     for admin_id in admins:
@@ -457,7 +530,7 @@ async def receive_receipt(message: Message, state: FSMContext):
             photo=photo,
             caption=(f'Чек от @{message.from_user.username}\n'
                      f'ID: <code>{message.from_user.id}</code>\n'
-                     f'План: {plan_names[plan]} — {summ}₽'),
+                     f'Сумма: {summ}₽'),
             parse_mode='HTML',
             reply_markup=buttons
         )

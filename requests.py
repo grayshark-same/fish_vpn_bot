@@ -33,7 +33,7 @@ async def get_user_balance(tg_id: int):
         cur.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
         balance = cur.fetchone()
         if balance[0] > 0:
-            print(balance[0])
+            # print(balance[0])
             return int(balance[0])
         return 0
 
