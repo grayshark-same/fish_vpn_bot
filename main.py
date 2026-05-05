@@ -1,6 +1,7 @@
 import os
 import datetime
 from aiogram import Dispatcher, Bot, F
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State, default_state
@@ -12,12 +13,14 @@ import sqlite3
 
 load_dotenv()
 
-bot = Bot(os.getenv('BOT_TOKEN'))
+_proxy = os.getenv('PROXY')
+bot = Bot(os.getenv('BOT_TOKEN'), session=AiohttpSession(proxy=_proxy) if _proxy else None)
 dp = Dispatcher()
 
 admins = os.getenv('ADMINS').split(', ')
 admin = os.getenv('ADMIN')
 card = os.getenv('CARD')
+REF_PERCENT = int(os.getenv('REF_PERCENT', 70))
 
 with sqlite3.connect('users.db') as db:
     cursor = db.cursor()
@@ -34,6 +37,16 @@ with sqlite3.connect('users.db') as db:
             ref_procent INTEGER DEFAULT 0
         )
     ''')
+    for _col, _def in [
+        ('devices',     'INTEGER DEFAULT 0'),
+        ('ref_id',      'INTEGER DEFAULT 0'),
+        ('ref_balance', 'INTEGER DEFAULT 0'),
+        ('ref_procent', 'INTEGER DEFAULT 0'),
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {_col} {_def}")
+        except sqlite3.OperationalError:
+            pass
 with sqlite3.connect('reports.db') as db:
     cursor = db.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS reports_for_day (
@@ -50,6 +63,7 @@ plan_names = {1: '1 месяц', 3: '3 месяца', 6: '6 месяцев', 12:
 
 admin_panel = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text='Статистика', callback_data='statistic')],
+    [InlineKeyboardButton(text='Баланс пользователя', callback_data='admin_balance')],
     [InlineKeyboardButton(text='Рассылка', callback_data='newsletter')]
 ])
 admin_return_button = InlineKeyboardMarkup(inline_keyboard=[
@@ -64,6 +78,9 @@ class States(StatesGroup):
     newsletter_text = State()
     newsletter_photo = State()
     newsletter_buttons = State()
+    admin_check_id = State()
+    admin_deduct_summ = State()
+    admin_deduct_ref_summ = State()
 
 # @dp.message(F.photo)
 # async def get_file_id(message: Message):
@@ -111,6 +128,7 @@ async def send_main_menu(target, user_id, username=None):
     buttons = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='Управление подпиской', callback_data='settings', icon_custom_emoji_id='6032742198179532882')],
         [InlineKeyboardButton(text='Пополнить баланс', callback_data='balance_0', icon_custom_emoji_id='5769126056262898415')],
+        [InlineKeyboardButton(text='Реферальная система', callback_data='referral', icon_custom_emoji_id='6033125983572201397')],
         [InlineKeyboardButton(text='Продлить', callback_data='extend', icon_custom_emoji_id='5769126056262898415'),
          InlineKeyboardButton(text='Поддержка', callback_data='support', icon_custom_emoji_id='6030329749409108167')],
         [InlineKeyboardButton(text='Что это?', callback_data='about', icon_custom_emoji_id='6032594876506312598')]
@@ -129,6 +147,10 @@ async def send_main_menu(target, user_id, username=None):
 
 @dp.message(Command('start'))
 async def start_handler(message: Message):
+    await add_user(message.from_user.id, message.from_user.username)
+    args = message.text.split() if message.text else []
+    if len(args) > 1 and args[1].isdigit():
+        await set_ref_id(message.from_user.id, int(args[1]))
     await send_main_menu(message, message.from_user.id, message.from_user.username)
 
 
@@ -295,30 +317,70 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         if summ <= await get_user_balance(user.id):
             await add_balance(summ=-summ, tg_id=user.id)
             await add_sub(tg_id=user.id, plan=plan)
-            await edit_or_answer(callback, text=f'Подписка успешно куплена!', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[back_menu_btn()[0]]]))
+            ref_id = await get_ref_id(user.id)
+            if ref_id:
+                *_, ref_procent = await get_ref_info(ref_id)
+                rate = ref_procent if ref_procent else REF_PERCENT
+                reward = int(summ * rate / 100)
+                if reward > 0:
+                    await add_ref_balance(ref_id, reward)
+                    try:
+                        await bot.send_message(
+                            ref_id,
+                            f'<tg-emoji emoji-id="6041731551845159060">🎉</tg-emoji> Ваш реферал оплатил подписку!\n'
+                            f'<tg-emoji emoji-id="5890848474563352982">🪙</tg-emoji> Вам начислено <b>{reward}₽</b> на реферальный баланс.',
+                            parse_mode='HTML'
+                        )
+                    except Exception:
+                        pass
+            await edit_or_answer(callback, text='✅ Подписка успешно куплена!', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[back_menu_btn()[0]]]))
         else:
-            await edit_or_answer(callback, text=f'На вашем балансе нехватает <code>{await get_user_balance(user.id)-summ}</code>', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пополнить баланс', callback_data=f'balance_{summ}')]]))
+            await edit_or_answer(callback, text=f'На вашем балансе нехватает <code>{summ - await get_user_balance(user.id)}₽</code>', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пополнить баланс', callback_data=f'balance_{summ}')]]))
 
-    # elif data.startswith('pay_'):
-    #     parts = data.split('_')
-    #     summ, method = int(parts[1]), parts[2]
-    #     await state.update_data(method=method)
-    #     if method == 'crypto':
-    #             await callback.answer("Оплата криптой в разработке", show_alert=True)
-    #     if summ != 0:
-            
-    #         await state.set_state(States.pay_receipt)
-    #         await edit_or_answer(
-    #             callback,
-    #             f"Переведите <b>{summ}₽</b> на карту <code>{card}</code>\n\nПосле оплаты отправьте фото чека.",
-    #             reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'pay_{summ}_{method}')])
-    #         )
-    #     else:
-    #         text = '''Введите сумму пополнения<tg-emoji emoji-id="5427181942934088912">💬</tg-emoji>'''
-    #         await state.set_state(States.summ)
-    #         await edit_or_answer(callback, text=text, parse_mode='html')
+    elif data.startswith('pay_') and not data.startswith('pay_sub_'):
+        parts = data.split('_')
+        summ, method = int(parts[1]), parts[2]
+        if method == 'crypto':
+            await callback.answer("Оплата криптой в разработке", show_alert=True)
+        elif summ != 0:
+            await state.update_data(summ=summ, method=method)
+            await state.set_state(States.pay_receipt)
+            await edit_or_answer(
+                callback,
+                f"💳 Переведите <b>{summ}₽</b> на карту:\n\n<code>{card}</code>\n\nПосле оплаты отправьте фото чека.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[back_btn(f'balance_{summ}')])
+            )
+        else:
+            await state.update_data(method=method)
+            await state.set_state(States.summ)
+            await edit_or_answer(callback, '💳 Введите сумму пополнения:')
 
         
+    elif data in ('referral', 'ref_withdraw'):
+        if data == 'ref_withdraw':
+            amount = await transfer_ref_balance(user.id)
+            if amount > 0:
+                await callback.answer(f'✅ {amount}₽ переведено на ваш баланс!', show_alert=True)
+            else:
+                await callback.answer('Реферальный баланс пуст.', show_alert=True)
+        ref_balance, ref_count, ref_procent = await get_ref_info(user.id)
+        ref_procent = ref_procent if ref_procent else REF_PERCENT
+        me = await bot.get_me()
+        ref_link = f"https://t.me/{me.username}?start={user.id}"
+        text = (
+            f"📍Главное меню » <tg-emoji emoji-id=\"6033125983572201397\">👥</tg-emoji> <b>Реферальная система</b>\n\n"
+            f"<blockquote>🔗 Ваша реферальная ссылка:\n<code>{ref_link}</code></blockquote>\n\n"
+            f"<tg-emoji emoji-id=\"6033108709213736873\">➕</tg-emoji> Приглашено: <code>{ref_count}</code> чел.\n"
+            f"<tg-emoji emoji-id=\"5879814368572478751\">🏧</tg-emoji> Реферальный баланс: <code>{ref_balance}</code><b>₽</b>\n"
+            f"<tg-emoji emoji-id=\"5936143551854285132\">📊</tg-emoji> Ваш процент: <code>{ref_procent}%</code>\n\n"
+            f"За каждую оплату реферала вы получаете <code>{ref_procent}%</code> от суммы."
+        )
+        rows = []
+        if ref_balance > 0:
+            rows.append([InlineKeyboardButton(text=f'💸 Вывести {ref_balance}₽ на основной баланс', callback_data='ref_withdraw')])
+        rows.append([back_menu_btn()[0]])
+        await edit_or_answer(callback, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+
     elif data == 'support':
         text = (
             f"📍Главное меню » <b><tg-emoji emoji-id='6030329749409108167'>💬</tg-emoji> Поддержка</b>\n\n"
@@ -376,7 +438,8 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
 
 <tg-emoji emoji-id="6032594876506312598">👥</tg-emoji>Всего юзеров: {count}
 <tg-emoji emoji-id="5902206159095339799">🤑</tg-emoji>Прибыль сегодня: <code>{todays_profit}</code>''',
-                reply_markup=admin_panel
+                reply_markup=admin_panel,
+                parse_mode='HTML'
             )
         elif data.startswith('accept_'):
             _, summ, uid = data.split('_')
@@ -394,6 +457,32 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             uid = int(data.split('_')[1])
             await callback.message.delete()
             await bot.send_message(chat_id=uid, text=f'❌ Чек отклонён. Обратитесь в поддержку: @{admin.lstrip("@")}')
+        elif data == 'admin_balance':
+            await state.set_state(States.admin_check_id)
+            await callback.message.answer('👤 Введите ID пользователя:')
+
+        elif data.startswith('admin_deduct_'):
+            parts = data.split('_')
+            if parts[2] == 'ref':
+                uid = int(parts[3])
+                ref_balance, *_ = await get_ref_info(uid)
+                await state.update_data(deduct_uid=uid)
+                await state.set_state(States.admin_deduct_ref_summ)
+                await callback.message.answer(
+                    f'🤝 Реферальный баланс: <code>{ref_balance}₽</code>\n\nВведите сумму для списания:',
+                    parse_mode='HTML'
+                )
+            else:
+                uid = int(parts[2])
+                info = await get_user_info(uid)
+                balance = int(info[2]) if info else 0
+                await state.update_data(deduct_uid=uid)
+                await state.set_state(States.admin_deduct_summ)
+                await callback.message.answer(
+                    f'💰 Основной баланс: <code>{balance}₽</code>\n\nВведите сумму для списания:',
+                    parse_mode='HTML'
+                )
+
         elif data == 'newsletter':
             await state.set_state(States.newsletter_text)
             await callback.message.answer('✍️ Введите текст рассылки:')
@@ -536,6 +625,105 @@ async def receive_receipt(message: Message, state: FSMContext):
         )
     await state.clear()
     await message.answer("✅ Чек отправлен на проверку. Ожидайте активации.")
+
+
+@dp.message(States.admin_check_id)
+async def admin_check_id_handler(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in admins:
+        return
+    if not message.text or not message.text.strip().lstrip('-').isdigit():
+        await message.answer('❌ Введите корректный числовой ID:')
+        return
+    uid = int(message.text.strip())
+    info = await get_user_info(uid)
+    await state.clear()
+    if not info:
+        await message.answer('❌ Пользователь не найден.')
+        return
+    _, username, balance, ref_balance = info
+    balance = int(balance) if balance else 0
+    ref_balance = int(ref_balance) if ref_balance else 0
+    uname_str = f'@{username}' if username else '—'
+    text = (
+        f'👤 Пользователь: {uname_str}\n'
+        f'🆔 ID: <code>{uid}</code>\n'
+        f'💰 Основной баланс: <code>{balance}₽</code>\n'
+        f'🤝 Реферальный баланс: <code>{ref_balance}₽</code>'
+    )
+    buttons = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='💸 Списать основной баланс', callback_data=f'admin_deduct_{uid}')],
+        [InlineKeyboardButton(text='💸 Списать реф. баланс', callback_data=f'admin_deduct_ref_{uid}')],
+        [InlineKeyboardButton(text='« Назад', callback_data='admin_return')]
+    ])
+    await message.answer(text, reply_markup=buttons, parse_mode='HTML')
+
+
+@dp.message(States.admin_deduct_summ)
+async def admin_deduct_summ_handler(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in admins:
+        return
+    if not message.text or not message.text.strip().isdigit():
+        await message.answer('❌ Введите корректную сумму (только цифры):')
+        return
+    summ = int(message.text.strip())
+    fsm_data = await state.get_data()
+    uid = fsm_data.get('deduct_uid')
+    current_balance = await get_user_balance(uid)
+    if summ > current_balance:
+        await message.answer(
+            f'❌ Недостаточно средств. Баланс пользователя: <code>{current_balance}₽</code>',
+            parse_mode='HTML'
+        )
+        return
+    await add_balance(tg_id=uid, summ=-summ)
+    await state.clear()
+    new_balance = await get_user_balance(uid)
+    await message.answer(
+        f'✅ Списано <code>{summ}₽</code> у пользователя <code>{uid}</code>\n'
+        f'Новый баланс: <code>{new_balance}₽</code>',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='« В панель', callback_data='admin_return')]
+        ])
+    )
+    try:
+        await bot.send_message(uid, f'❗️ Администратор списал <code>{summ}₽</code> с вашего баланса.', parse_mode='HTML')
+    except Exception:
+        pass
+
+
+@dp.message(States.admin_deduct_ref_summ)
+async def admin_deduct_ref_summ_handler(message: Message, state: FSMContext):
+    if str(message.from_user.id) not in admins:
+        return
+    if not message.text or not message.text.strip().isdigit():
+        await message.answer('❌ Введите корректную сумму (только цифры):')
+        return
+    summ = int(message.text.strip())
+    fsm_data = await state.get_data()
+    uid = fsm_data.get('deduct_uid')
+    ref_balance, *_ = await get_ref_info(uid)
+    if summ > ref_balance:
+        await message.answer(
+            f'❌ Недостаточно средств. Реф. баланс: <code>{ref_balance}₽</code>',
+            parse_mode='HTML'
+        )
+        return
+    await deduct_ref_balance(tg_id=uid, amount=summ)
+    await state.clear()
+    new_ref_balance, *_ = await get_ref_info(uid)
+    await message.answer(
+        f'✅ Списано <code>{summ}₽</code> с реф. баланса пользователя <code>{uid}</code>\n'
+        f'Новый реф. баланс: <code>{new_ref_balance}₽</code>',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='« В панель', callback_data='admin_return')]
+        ])
+    )
+    try:
+        await bot.send_message(uid, f'<tg-emoji emoji-id="6039486778597970865">🔔</tg-emoji> Администратор списал <code>{summ}₽</code> с вашего реферального баланса.', parse_mode='HTML')
+    except Exception:
+        pass
 
 
 if __name__ == '__main__':

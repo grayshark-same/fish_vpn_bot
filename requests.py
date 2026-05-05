@@ -74,4 +74,68 @@ async def get_report_for_days(days: int):
         reports = cur.fetchall()
         print(reports)
         return reports
-        
+
+
+async def get_ref_id(tg_id: int) -> int:
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT ref_id FROM users WHERE tg_id = ?", (tg_id,))
+        row = cur.fetchone()
+        return row[0] if row and row[0] else 0
+
+
+async def set_ref_id(tg_id: int, ref_id: int):
+    if tg_id == ref_id:
+        return
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT ref_id FROM users WHERE tg_id = ?", (tg_id,))
+        row = cur.fetchone()
+        if not row or row[0]:
+            return
+        cur.execute("SELECT tg_id FROM users WHERE tg_id = ?", (ref_id,))
+        if cur.fetchone():
+            cur.execute("UPDATE users SET ref_id = ? WHERE tg_id = ?", (ref_id, tg_id))
+
+
+async def get_ref_info(tg_id: int) -> tuple[int, int, int]:
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT ref_balance, ref_procent FROM users WHERE tg_id = ?", (tg_id,))
+        row = cur.fetchone()
+        ref_balance = int(row[0]) if row and row[0] else 0
+        ref_procent = int(row[1]) if row and row[1] else 0
+        cur.execute("SELECT COUNT(*) FROM users WHERE ref_id = ?", (tg_id,))
+        ref_count = cur.fetchone()[0]
+        return ref_balance, ref_count, ref_procent
+
+
+async def add_ref_balance(tg_id: int, amount: int):
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("UPDATE users SET ref_balance = ref_balance + ? WHERE tg_id = ?", (amount, tg_id))
+
+
+async def transfer_ref_balance(tg_id: int) -> int:
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT ref_balance FROM users WHERE tg_id = ?", (tg_id,))
+        row = cur.fetchone()
+        if not row or not row[0] or int(row[0]) <= 0:
+            return 0
+        amount = int(row[0])
+        cur.execute("UPDATE users SET balance = balance + ?, ref_balance = 0 WHERE tg_id = ?", (amount, tg_id))
+        return amount
+
+
+async def get_user_info(tg_id: int):
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT tg_id, username, balance, ref_balance FROM users WHERE tg_id = ?", (tg_id,))
+        return cur.fetchone()  # (tg_id, username, balance, ref_balance) или None
+
+
+async def deduct_ref_balance(tg_id: int, amount: int):
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("UPDATE users SET ref_balance = ref_balance - ? WHERE tg_id = ?", (amount, tg_id))
