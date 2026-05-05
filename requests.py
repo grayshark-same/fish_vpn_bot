@@ -135,6 +135,18 @@ async def get_user_info(tg_id: int):
         return cur.fetchone()  # (tg_id, username, balance, ref_balance) или None
 
 
+async def add_days_to_sub(tg_id: int, days: int):
+    with sqlite3.connect('users.db') as db:
+        cur = db.cursor()
+        cur.execute("SELECT end_of_sub FROM users WHERE tg_id = ?", (tg_id,))
+        row = cur.fetchone()
+        end_date = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S") if row and row[0] else None
+        if not end_date or end_date < datetime.datetime.now():
+            end_date = datetime.datetime.now()
+        end_date += datetime.timedelta(days=days)
+        cur.execute("UPDATE users SET end_of_sub = ? WHERE tg_id = ?", (end_date.strftime("%Y-%m-%d %H:%M:%S"), tg_id))
+
+
 async def deduct_ref_balance(tg_id: int, amount: int):
     with sqlite3.connect('users.db') as db:
         cur = db.cursor()

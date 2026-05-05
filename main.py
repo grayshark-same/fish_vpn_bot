@@ -116,9 +116,7 @@ async def send_main_menu(target, user_id, username=None):
 
     text = (
         '<b>🎣 Fish VPN</b> – Стабильный, защищенный и анонимный VPN.\n\n'
-        "🇸🇪 Швеция • 🇳🇱 Нидерланды • 🇪🇪 Эстония • 🇫🇮 Финляндия\n"
-        "🇺🇸 США • 🇱🇻 Латвия • 🇩🇪 Германия • 🇬🇧 Великобритания\n"
-        "🇫🇷 Франция • 🇰🇿 Казахстан • 🇧🇾 Беларусь\n\n"
+        "• 🇳🇱 Нидерланды\n• 🇫🇮 Финляндия\n• 🇺🇸 США\n• 🇩🇪 Германия\n• 🇰🇿 Казахстан\n\n"
         f"<blockquote>📌 Ваша подписка:\n"
         f"Статус: <code>{status}</code>\n"
         f"Действует до: <code>{date_str}</code>\n"
@@ -321,19 +319,27 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             ref_id = await get_ref_id(user.id)
             if ref_id:
                 *_, ref_procent = await get_ref_info(ref_id)
-                rate = ref_procent if ref_procent else REF_PERCENT
-                reward = int(summ * rate / 100)
-                if reward > 0:
-                    await add_ref_balance(ref_id, reward)
-                    try:
+                try:
+                    if ref_procent > 0:
+                        reward = int(summ * ref_procent / 100)
+                        if reward > 0:
+                            await add_ref_balance(ref_id, reward)
+                            await bot.send_message(
+                                ref_id,
+                                f'<tg-emoji emoji-id="6041731551845159060">🎉</tg-emoji> Ваш реферал оплатил подписку!\n'
+                                f'<tg-emoji emoji-id="5890848474563352982">🪙</tg-emoji> Вам начислено <b>{reward}₽</b> на реферальный баланс.',
+                                parse_mode='HTML'
+                            )
+                    else:
+                        await add_days_to_sub(ref_id, 10)
                         await bot.send_message(
                             ref_id,
                             f'<tg-emoji emoji-id="6041731551845159060">🎉</tg-emoji> Ваш реферал оплатил подписку!\n'
-                            f'<tg-emoji emoji-id="5890848474563352982">🪙</tg-emoji> Вам начислено <b>{reward}₽</b> на реферальный баланс.',
+                            f'🎁 Вам добавлено <b>10 дней</b> бесплатной подписки.',
                             parse_mode='HTML'
                         )
-                    except Exception:
-                        pass
+                except Exception:
+                    pass
             await edit_or_answer(callback, text='✅ Подписка успешно куплена!', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[back_menu_btn()[0]]]))
         else:
             await edit_or_answer(callback, text=f'На вашем балансе нехватает <code>{summ - await get_user_balance(user.id)}</code>₽', reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пополнить баланс', callback_data=f'balance_{summ}')]]))
