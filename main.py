@@ -94,8 +94,8 @@ async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, 
             await callback.message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
         else:
             await callback.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f'[edit_or_answer] {type(e).__name__}: {e}')
 
 
 def back_menu_btn():
@@ -116,9 +116,9 @@ async def send_main_menu(target, user_id, username=None):
 
     text = (
         '<b>🎣 Fish VPN</b> – Стабильный, защищенный и анонимный VPN.\n\n'
-        "<b>🇷🇺 Белые списки</b> \n• 🇸🇪 Швеция \n• 🇳🇱 Нидерланды \n• 🇪🇪 Эстония\n"
-        "• 🇫🇮 Финляндия \n• 🇺🇸 США \n• 🇱🇻 Латвия \n• 🇩🇪 Германия\n"
-        "• 🇬🇧 Великобритания \n• 🇫🇷 Франция \n• 🇰🇿 Казахстан \n• 🇧🇾 Беларусь\n\n"
+        "🇸🇪 Швеция • 🇳🇱 Нидерланды • 🇪🇪 Эстония • 🇫🇮 Финляндия\n"
+        "🇺🇸 США • 🇱🇻 Латвия • 🇩🇪 Германия • 🇬🇧 Великобритания\n"
+        "🇫🇷 Франция • 🇰🇿 Казахстан • 🇧🇾 Беларусь\n\n"
         f"<blockquote>📌 Ваша подписка:\n"
         f"Статус: <code>{status}</code>\n"
         f"Действует до: <code>{date_str}</code>\n"
