@@ -6,6 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State, default_state
 from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.utils.deep_linking import create_start_link, decode_payload
 from dotenv import load_dotenv
 from requests import *
 import sqlite3
