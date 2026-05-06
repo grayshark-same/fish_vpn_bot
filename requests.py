@@ -3,11 +3,12 @@ import os
 from aiogram import Dispatcher, Bot, F
 from aiogram.filters import CommandStart, Command, Filter
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from main import REPORTS_DB, USERS_DB
 import datetime
 
 
 async def add_user(tg_id: int, username: str):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT * FROM users WHERE tg_id = ?", (tg_id,))
         user = cur.fetchone()
@@ -17,7 +18,7 @@ async def add_user(tg_id: int, username: str):
 
 async def add_sub(tg_id: int, plan: int):
     plan_days = {1: 30, 3: 90, 6: 180, 12: 365}
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT end_of_sub FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -28,7 +29,7 @@ async def add_sub(tg_id: int, plan: int):
         cur.execute("UPDATE users SET end_of_sub = ? WHERE tg_id = ?", (end_date.strftime("%Y-%m-%d %H:%M:%S"), tg_id))
 
 async def get_user_balance(tg_id: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT balance FROM users WHERE tg_id = ?", (tg_id,))
         balance = cur.fetchone()
@@ -38,12 +39,12 @@ async def get_user_balance(tg_id: int):
         return 0
 
 async def add_balance(tg_id: int, summ: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("UPDATE users SET balance = balance + ? WHERE tg_id = ?", (summ, tg_id))
 
 async def get_user_sub(tg_id: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT end_of_sub FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -54,20 +55,20 @@ async def get_user_sub(tg_id: int):
         return is_active, end_date
 
 async def get_users_count():
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT COUNT(*) FROM users")
         return cur.fetchone()[0]
 
 async def add_report(money: int):
     today = datetime.date.today().isoformat()
-    with sqlite3.connect('reports.db') as db:
+    with sqlite3.connect(REPORTS_DB) as db:
         cur = db.cursor()
         cur.execute("INSERT OR IGNORE INTO reports_for_day (date, money, transactions) VALUES (?, 0, 0)", (today,))
         cur.execute("UPDATE reports_for_day SET money = money + ?, transactions = transactions + 1 WHERE date(date) = ?", (money, today))
 
 async def get_report_for_days(days: int):
-    with sqlite3.connect('reports.db') as db:
+    with sqlite3.connect(REPORTS_DB) as db:
         cur = db.cursor()
         since = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime("%Y-%m-%d")
         cur.execute('SELECT money, transactions, users FROM reports_for_day WHERE date(date) >= ?', (since,))
@@ -77,7 +78,7 @@ async def get_report_for_days(days: int):
 
 
 async def get_ref_id(tg_id: int) -> int:
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT ref_id FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -87,7 +88,7 @@ async def get_ref_id(tg_id: int) -> int:
 async def set_ref_id(tg_id: int, ref_id: int):
     if tg_id == ref_id:
         return
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT ref_id FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -99,7 +100,7 @@ async def set_ref_id(tg_id: int, ref_id: int):
 
 
 async def get_ref_info(tg_id: int) -> tuple[int, int, int]:
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT ref_balance, ref_procent FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -111,13 +112,13 @@ async def get_ref_info(tg_id: int) -> tuple[int, int, int]:
 
 
 async def add_ref_balance(tg_id: int, amount: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("UPDATE users SET ref_balance = ref_balance + ? WHERE tg_id = ?", (amount, tg_id))
 
 
 async def transfer_ref_balance(tg_id: int) -> int:
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT ref_balance FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -129,14 +130,14 @@ async def transfer_ref_balance(tg_id: int) -> int:
 
 
 async def get_user_info(tg_id: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT tg_id, username, balance, ref_balance FROM users WHERE tg_id = ?", (tg_id,))
         return cur.fetchone()  # (tg_id, username, balance, ref_balance) или None
 
 
 async def add_days_to_sub(tg_id: int, days: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT end_of_sub FROM users WHERE tg_id = ?", (tg_id,))
         row = cur.fetchone()
@@ -148,6 +149,6 @@ async def add_days_to_sub(tg_id: int, days: int):
 
 
 async def deduct_ref_balance(tg_id: int, amount: int):
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("UPDATE users SET ref_balance = ref_balance - ? WHERE tg_id = ?", (amount, tg_id))

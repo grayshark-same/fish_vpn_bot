@@ -23,7 +23,13 @@ admin = os.getenv('ADMIN')
 card = os.getenv('CARD')
 REF_PERCENT = int(os.getenv('REF_PERCENT', 70))
 
-with sqlite3.connect('users.db') as db:
+DB_DIR = os.getenv('DB_DIR', '.')
+USERS_DB = os.path.join(DB_DIR, 'users.db')
+REPORTS_DB = os.path.join(DB_DIR, 'reports.db')
+
+
+
+with sqlite3.connect(USERS_DB) as db:
     cursor = db.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -48,7 +54,7 @@ with sqlite3.connect('users.db') as db:
             cursor.execute(f"ALTER TABLE users ADD COLUMN {_col} {_def}")
         except sqlite3.OperationalError:
             pass
-with sqlite3.connect('reports.db') as db:
+with sqlite3.connect(REPORTS_DB) as db:
     cursor = db.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS reports_for_day (
                         date TIMESTAMP DEFAULT CURRENT_TIMESTAMP UNIQUE,
@@ -548,7 +554,7 @@ async def _do_newsletter(fsm_data: dict) -> int:
     rows = await _parse_buttons(buttons_text) if buttons_text else []
     markup = InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
 
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(USERS_DB) as db:
         cur = db.cursor()
         cur.execute("SELECT tg_id FROM users")
         user_ids = [row[0] for row in cur.fetchall()]
