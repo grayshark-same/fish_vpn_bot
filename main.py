@@ -108,9 +108,11 @@ CHANNEL_ID = '@FishVPN_info'
 CHANNEL_URL = 'https://t.me/FishVPN_info'
 
 _sub_required_text = (
-    '<tg-emoji emoji-id="6021418126061605425">📢</tg-emoji> Для использования бота подпишитесь на <a href="http://t.me/FishVPN_info">наш канал</a>.\n\n'
+    '<tg-emoji emoji-id="6021418126061605425">📢</tg-emoji> Для использования бота подпишитесь на наш канал..\n\n'
     'После подписки нажмите «<b><tg-emoji emoji-id="5774022692642492953">✅</tg-emoji> Я подписался</b>».'
 )
+
+
 _sub_required_markup = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text='Новостной канал', url=CHANNEL_URL, icon_custom_emoji_id='6021418126061605425')],
     [InlineKeyboardButton(text='Я подписался', callback_data='check_sub', icon_custom_emoji_id='5774022692642492953')]
