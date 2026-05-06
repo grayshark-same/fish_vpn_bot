@@ -26,8 +26,8 @@ REF_PERCENT = int(os.getenv('REF_PERCENT', 70))
 DB_DIR = os.getenv('DB_DIR', '.')
 USERS_DB = os.path.join(DB_DIR, 'users.db')
 REPORTS_DB = os.path.join(DB_DIR, 'reports.db')
-
-
+   
+ 
 
 with sqlite3.connect(USERS_DB) as db:
     cursor = db.cursor()
