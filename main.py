@@ -107,9 +107,13 @@ async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, 
 CHANNEL_ID = '@FishVPN_info'
 CHANNEL_URL = 'https://t.me/FishVPN_info'
 
+_sub_required_text = (
+    '<tg-emoji emoji-id="6021418126061605425">📢</tg-emoji> Для использования бота подпишитесь на <a href="http://t.me/FishVPN_info">наш канал</a>.\n\n'
+    'После подписки нажмите «<b><tg-emoji emoji-id="5774022692642492953">✅</tg-emoji> Я подписался</b>».'
+)
 _sub_required_markup = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text='📢 Подписаться на канал', url=CHANNEL_URL)],
-    [InlineKeyboardButton(text='✅ Я подписался', callback_data='check_sub')]
+    [InlineKeyboardButton(text='Новостной канал', url=CHANNEL_URL, icon_custom_emoji_id='6021418126061605425')],
+    [InlineKeyboardButton(text='Я подписался', callback_data='check_sub', icon_custom_emoji_id='5774022692642492953')]
 ])
 
 async def is_subscribed(user_id: int) -> bool:
@@ -172,8 +176,9 @@ async def send_main_menu(target, user_id, username=None):
 async def start_handler(message: Message):
     if not await is_subscribed(message.from_user.id):
         await message.answer(
-            '📢 Для использования бота подпишитесь на наш канал.\n\nПосле подписки нажмите «✅ Я подписался».',
-            reply_markup=_sub_required_markup
+            _sub_required_text,
+            reply_markup=_sub_required_markup,
+            parse_mode='HTML'
         )
         return
     await add_user(message.from_user.id, message.from_user.username)
@@ -233,8 +238,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
     if not await is_subscribed(user.id):
         await callback.answer('📢 Подпишитесь на канал для использования бота.', show_alert=True)
         await callback.message.answer(
-            '📢 Для использования бота подпишитесь на наш канал.\n\nПосле подписки нажмите «✅ Я подписался».',
-            reply_markup=_sub_required_markup
+            _sub_required_text,
+            reply_markup=_sub_required_markup,
+            parse_mode='HTML'
         )
         return
 
