@@ -104,6 +104,24 @@ async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, 
         print(f'[edit_or_answer] {type(e).__name__}: {e}')
 
 
+CHANNEL_ID = '@FishVPN_info'
+CHANNEL_URL = 'https://t.me/FishVPN_info'
+
+_sub_required_markup = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text='📢 Подписаться на канал', url=CHANNEL_URL)],
+    [InlineKeyboardButton(text='✅ Я подписался', callback_data='check_sub')]
+])
+
+async def is_subscribed(user_id: int) -> bool:
+    try:
+        member = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        print(f'[sub check] user={user_id} status={member.status}')
+        return member.status not in ('left', 'kicked', 'banned')
+    except Exception as e:
+        print(f'[sub check ERROR] {type(e).__name__}: {e}')
+        return False
+
+
 def back_menu_btn():
     return [InlineKeyboardButton(text='« Главное Меню', callback_data='menu')]
 
@@ -152,6 +170,12 @@ async def send_main_menu(target, user_id, username=None):
 
 @dp.message(Command('start'))
 async def start_handler(message: Message):
+    if not await is_subscribed(message.from_user.id):
+        await message.answer(
+            '📢 Для использования бота подпишитесь на наш канал.\n\nПосле подписки нажмите «✅ Я подписался».',
+            reply_markup=_sub_required_markup
+        )
+        return
     await add_user(message.from_user.id, message.from_user.username)
     args = message.text.split() if message.text else []
     if len(args) > 1 and args[1].isdigit():
@@ -159,6 +183,15 @@ async def start_handler(message: Message):
     await send_main_menu(message, message.from_user.id, message.from_user.username)
 
 
+
+
+@dp.message(Command('restart'))
+async def restart_handler(message: Message):
+    if str(message.from_user.id) not in admins:
+        return
+    await message.answer('🔄 Перезапуск...')
+    import sys
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 @dp.message(Command('admin'))
@@ -187,6 +220,23 @@ async def admin_command(message: Message):
 async def callbacks(callback: CallbackQuery, state: FSMContext):
     data = callback.data
     user = callback.from_user
+
+    if data == 'check_sub':
+        if await is_subscribed(user.id):
+            await callback.message.delete()
+            await add_user(user.id, user.username)
+            await send_main_menu(callback.message, user.id, user.username)
+        else:
+            await callback.answer('❌ Вы ещё не подписались на канал!', show_alert=True)
+        return
+
+    if not await is_subscribed(user.id):
+        await callback.answer('📢 Подпишитесь на канал для использования бота.', show_alert=True)
+        await callback.message.answer(
+            '📢 Для использования бота подпишитесь на наш канал.\n\nПосле подписки нажмите «✅ Я подписался».',
+            reply_markup=_sub_required_markup
+        )
+        return
 
     if data == 'menu':
         await send_main_menu(callback, user.id, user.username)
