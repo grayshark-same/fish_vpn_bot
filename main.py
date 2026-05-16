@@ -28,6 +28,7 @@ dp = Dispatcher()
 
 admins = os.getenv('ADMINS').split(', ')
 admin = os.getenv('ADMIN')
+support = os.getenv('SUPPORT', admin)
 card = os.getenv('CARD')
 REF_PERCENT = int(os.getenv('REF_PERCENT', 70))
 USD_RATE = float(os.getenv('USD_RATE', 90))
@@ -695,7 +696,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             f"📋 Ваш ID: <blockquote>{user.id}</blockquote>"
         )
         buttons = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='Поддержка', url=f'https://t.me/{admin.lstrip("@")}', icon_custom_emoji_id='6030329749409108167')],
+            [InlineKeyboardButton(text='Поддержка', url=f'https://t.me/{support.lstrip("@")}', icon_custom_emoji_id='6030329749409108167')],
             [back_menu_btn()[0]]
         ])
         await edit_or_answer(callback, text, reply_markup=buttons)
