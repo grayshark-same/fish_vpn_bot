@@ -190,13 +190,25 @@ async def send_main_menu(target, user_id, username=None):
 
 
 
+async def _get_ref_str(tg_id: int) -> str:
+    ref_id = await get_ref_id(tg_id)
+    if not ref_id:
+        return "—"
+    ref_info = await get_user_info(ref_id)
+    if ref_info and ref_info[1]:
+        return f"@{ref_info[1]} (<code>{ref_id}</code>)"
+    return f"<code>{ref_id}</code>"
+
+
 async def _archive_topup(tg_id: int, summ: int, provider: str = "Platega", username: str | None = None):
-    uname = f"@{username}" if username else f"tg_id: {tg_id}"
+    uname = f"@{username}" if username else f"<code>{tg_id}</code>"
+    ref_str = await _get_ref_str(tg_id)
     now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
     text = (
         f"💰 <b>Пополнение баланса</b>\n\n"
         f"👤 Клиент: {uname}\n"
         f"🆔 TG ID: <code>{tg_id}</code>\n"
+        f"🔗 Реферал: {ref_str}\n"
         f"💵 Сумма: <code>{summ}</code>₽\n"
         f"🏦 Провайдер: {provider}\n\n"
         f"🕖 Дата: {now}"
@@ -208,12 +220,14 @@ async def _archive_topup(tg_id: int, summ: int, provider: str = "Platega", usern
 
 
 async def _archive_purchase(tg_id: int, summ: int, plan: int, username: str | None = None):
-    uname = f"@{username}" if username else f"tg_id: {tg_id}"
+    uname = f"@{username}" if username else f"<code>{tg_id}</code>"
+    ref_str = await _get_ref_str(tg_id)
     now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
     text = (
         f"🛒 <b>Покупка подписки</b>\n\n"
         f"👤 Клиент: {uname}\n"
         f"🆔 TG ID: <code>{tg_id}</code>\n"
+        f"🔗 Реферал: {ref_str}\n"
         f"📦 Тариф: {plan_names[plan]}\n"
         f"💵 Сумма: <code>{summ}</code>₽\n\n"
         f"🕖 Дата: {now}"
