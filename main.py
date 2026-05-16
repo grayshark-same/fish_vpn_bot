@@ -121,7 +121,7 @@ async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, 
         print(f'[edit_or_answer] {type(e).__name__}: {e}')
 
 
-ARCHIVE_CHAT_ID = -1005059665233
+ARCHIVE_CHAT_ID = -5059665233
 CHANNEL_ID = os.getenv('CHANNEL_ID')
 CHANNEL_URL = os.getenv('CHANNEL_URL')
 
