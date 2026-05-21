@@ -45,6 +45,7 @@ class XuiNode:
     path: str
     flag: str
     fixed_uuid: str
+    mode: str
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -97,6 +98,7 @@ def _load_nodes() -> list[XuiNode]:
                 path=os.getenv(prefix + "PATH", "/").strip(),
                 flag=os.getenv(prefix + "FLAG", "").strip(),
                 fixed_uuid=os.getenv(prefix + "FIXED_UUID", "").strip(),
+                mode=os.getenv(prefix + "MODE", "").strip(),
             )
         )
     return nodes
@@ -436,8 +438,11 @@ def _build_node_link(node: XuiNode, account: dict[str, str]) -> str | None:
             params["path"] = node.path
         if node.sni:
             params["host"] = node.sni
-    elif node.network in ("xhttp", "splithttp") and node.path:
-        params["path"] = node.path
+    elif node.network in ("xhttp", "splithttp"):
+        if node.path:
+            params["path"] = node.path
+        if node.mode:
+            params["mode"] = node.mode
     elif node.network == "grpc" and node.path:
         params["serviceName"] = node.path
 
