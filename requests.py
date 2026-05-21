@@ -13,7 +13,7 @@ async def add_user(tg_id: int, username: str | None) -> bool:
         cur.execute("SELECT username FROM users WHERE tg_id = ?", (tg_id,))
         user = cur.fetchone()
         if not user:
-            end_date = (datetime.datetime.now() + datetime.timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
+            end_date = (datetime.datetime.now() + datetime.timedelta(days=int(os.getenv("TRIAL_DAYS", "1")))).strftime("%Y-%m-%d %H:%M:%S")
             cur.execute("INSERT INTO users (tg_id, username, end_of_sub) VALUES(?, ?, ?)", (tg_id, username, end_date))
             return True
         if user[0] != username:
