@@ -1071,12 +1071,14 @@ async def admin_check_id_handler(message: Message, state: FSMContext):
     _, username, balance, ref_balance = info
     balance = int(balance) if balance else 0
     ref_balance = int(ref_balance) if ref_balance else 0
+    _, ref_count, _ = await get_ref_info(uid)
     uname_str = f'@{username}' if username else '—'
     text = (
         f'👤 Пользователь: {uname_str}\n'
         f'🆔 ID: <code>{uid}</code>\n'
         f'💰 Основной баланс: <code>{balance}₽</code>\n'
-        f'🤝 Реферальный баланс: <code>{ref_balance}₽</code>'
+        f'🤝 Реферальный баланс: <code>{ref_balance}₽</code>\n'
+        f'👥 Рефералов: <code>{ref_count}</code>'
     )
     buttons = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text='💸 Списать основной баланс', callback_data=f'admin_deduct_{uid}')],
