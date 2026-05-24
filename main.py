@@ -78,7 +78,7 @@ init_vpn_db()
 bot_balance = 0
 plans = {1: 190, 3: 499, 6: 899, 12: 1000}
 plan_days_map = {1: 30, 3: 90, 6: 180, 12: 360}
-plan_names = {1: '1 месяц', 3: '3 месяца', 6: '6 месяцев', 12: '💫12 месяцев'}
+plan_names = {1: '1 месяц', 3: '3 месяца', 6: '6 месяцев', 12: '🌟12 месяцев'}
 
 admin_panel = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text='Статистика', callback_data='statistic')],
