@@ -661,13 +661,16 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             pay_url = (transaction.get('url') or transaction.get('redirect')) if transaction else None
             if pay_url:
                 import asyncio
-                asyncio.create_task(poll_transaction(transaction['transactionId'], user.id, summ))
+                transaction_id = transaction['transactionId']
+                asyncio.create_task(poll_transaction(transaction_id, user.id, summ))
+                await state.update_data(check_transaction_id=transaction_id, check_summ=summ)
                 await edit_or_answer(
                     callback,
                     f'<tg-emoji emoji-id="5904359114531675993">💰</tg-emoji> Нажмите кнопку ниже для оплаты <b>{summ}₽</b> через <b>{method_label}</b>:\n\n'
                     f'<tg-emoji emoji-id="5778647930038653243">✨</tg-emoji> Ссылка действительна 15 минут.',
                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                         [InlineKeyboardButton(text=f'Оплатить {summ}₽', url=pay_url, icon_custom_emoji_id='5425008221330880308' if method == 'sbp' else '5195308461193182892')],
+                        [InlineKeyboardButton(text='✅ Я оплатил', callback_data='check_pay')],
                         [back_btn(f'balance_{summ}')[0]]
                     ])
                 )
@@ -677,6 +680,20 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             await callback.answer("Метод оплаты недоступен.", show_alert=True)
 
         
+    elif data == 'check_pay':
+        fsm_data = await state.get_data()
+        transaction_id = fsm_data.get('check_transaction_id')
+        if not transaction_id:
+            await callback.answer('❌ Платёж не найден.', show_alert=True)
+            return
+        status = await check_platega_status(transaction_id)
+        if status == 'CONFIRMED':
+            await callback.answer('✅ Оплата подтверждена!', show_alert=True)
+        elif status == 'PENDING':
+            await callback.answer('⏳ Платёж ещё не поступил. Попробуйте чуть позже.', show_alert=True)
+        else:
+            await callback.answer(f'❌ Статус платежа: {status or "неизвестен"}', show_alert=True)
+
     elif data in ('referral', 'ref_withdraw'):
         if data == 'ref_withdraw':
             amount = await transfer_ref_balance(user.id)
@@ -1016,13 +1033,16 @@ async def summ_handler(message: Message, state: FSMContext):
     pay_url = (transaction.get('url') or transaction.get('redirect')) if transaction else None
     if pay_url:
         import asyncio
-        asyncio.create_task(poll_transaction(transaction['transactionId'], message.from_user.id, summ))
+        transaction_id = transaction['transactionId']
+        asyncio.create_task(poll_transaction(transaction_id, message.from_user.id, summ))
+        await state.update_data(check_transaction_id=transaction_id, check_summ=summ)
         await message.answer(
             f'<tg-emoji emoji-id="5904359114531675993">💰</tg-emoji> Нажмите кнопку ниже для оплаты <b>{summ}₽</b> через <b>{method_label}</b>:\n\n'
             f'<tg-emoji emoji-id="5778647930038653243">✨</tg-emoji> Ссылка действительна 15 минут.',
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text=f'Оплатить {summ}₽', url=pay_url, icon_custom_emoji_id='5425008221330880308' if method == 'sbp' else '5195308461193182892')],
+                [InlineKeyboardButton(text='✅ Я оплатил', callback_data='check_pay')],
                 [back_menu_btn()[0]]
             ])
         )
