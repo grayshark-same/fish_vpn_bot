@@ -393,16 +393,16 @@ class XuiClient:
                 client_id = existing.get("id") or account["uuid"]
                 # try new API (v3.1+), fallback to old
                 try:
-                    new_body = {"inboundId": self.node.inbound_id, **client}
-                    await self._request(session, "POST", f"/panel/api/client/update/{account['email']}", json=new_body)
+                    new_body = {"client": client, "inboundIds": [self.node.inbound_id]}
+                    await self._request(session, "POST", f"/panel/api/clients/update/{account['email']}", json=new_body)
                 except RuntimeError:
                     old_body = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [client]})}
                     await self._request(session, "POST", f"/panel/api/inbounds/updateClient/{client_id}", json=old_body)
             else:
                 # try new API (v3.1+), fallback to old
                 try:
-                    new_body = {"inboundId": self.node.inbound_id, **client}
-                    await self._request(session, "POST", "/panel/api/client/add", json=new_body)
+                    new_body = {"client": client, "inboundIds": [self.node.inbound_id]}
+                    await self._request(session, "POST", "/panel/api/clients/add", json=new_body)
                 except RuntimeError:
                     old_body = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [client]})}
                     await self._request(session, "POST", "/panel/api/inbounds/addClient", json=old_body)
