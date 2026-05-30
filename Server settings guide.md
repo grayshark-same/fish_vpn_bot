@@ -30,9 +30,9 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 ```
 
 При установке задайте:
-- Username: `grayshark_`
-- Password: `nope`
-- Port: `2765`
+- Username
+- Password
+- Port
 - Web base path: придумайте случайный (например `/abc123/`)
 
 ## 5. Настройка BBR
