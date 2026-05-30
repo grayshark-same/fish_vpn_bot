@@ -184,7 +184,10 @@ async def send_main_menu(target, user_id, username=None):
         if target.message.photo:
             await target.message.edit_caption(caption=text, reply_markup=buttons, parse_mode='HTML')
         else:
-            await target.message.delete()
+            try:
+                await target.message.delete()
+            except Exception:
+                pass
             await target.message.answer_photo(photo=photo, caption=text, reply_markup=buttons, parse_mode='HTML')
     else:
         await target.answer_photo(photo=photo, caption=text, reply_markup=buttons, parse_mode='HTML')
