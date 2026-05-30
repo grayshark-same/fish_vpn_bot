@@ -388,13 +388,24 @@ class XuiClient:
             )
             flow = self.node.flow or (existing or clients[0] if clients else {}).get("flow", "")
             client = _client_payload(account, tg_id, end_date, flow=flow)
-            body = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [client]})}
 
             if existing:
                 client_id = existing.get("id") or account["uuid"]
-                await self._request(session, "POST", f"/panel/api/inbounds/updateClient/{client_id}", json=body)
+                # try new API (v3.1+), fallback to old
+                try:
+                    new_body = {"inboundId": self.node.inbound_id, **client}
+                    await self._request(session, "POST", f"/panel/api/client/update/{account['email']}", json=new_body)
+                except RuntimeError:
+                    old_body = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [client]})}
+                    await self._request(session, "POST", f"/panel/api/inbounds/updateClient/{client_id}", json=old_body)
             else:
-                await self._request(session, "POST", "/panel/api/inbounds/addClient", json=body)
+                # try new API (v3.1+), fallback to old
+                try:
+                    new_body = {"inboundId": self.node.inbound_id, **client}
+                    await self._request(session, "POST", "/panel/api/client/add", json=new_body)
+                except RuntimeError:
+                    old_body = {"id": self.node.inbound_id, "settings": json.dumps({"clients": [client]})}
+                    await self._request(session, "POST", "/panel/api/inbounds/addClient", json=old_body)
 
 
 async def ensure_vpn_account(tg_id: int, end_date: datetime.datetime, username: str | None = None) -> str:
