@@ -377,10 +377,18 @@ class XuiClient:
             raise RuntimeError(f"{self.node.name}: 3x-ui panel is not fully configured")
         async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
             await self._login(session)
-            inbound_data = await self._request(session, "GET", f"/panel/api/inbounds/get/{self.node.inbound_id}")
-            inbound = _extract_obj(inbound_data)
-            settings = _parse_json_field(inbound.get("settings"))
-            clients = settings.get("clients", [])
+            # try new API (v3.1+), fallback to old
+            try:
+                inbound_data = await self._request(session, "GET", f"/panel/api/inbounds/get/{self.node.inbound_id}")
+                inbound = _extract_obj(inbound_data)
+                settings = _parse_json_field(inbound.get("settings"))
+                clients = settings.get("clients", [])
+            except RuntimeError:
+                list_data = await self._request(session, "GET", "/panel/api/inbounds/list")
+                inbounds = _extract_obj(list_data) if isinstance(_extract_obj(list_data), list) else list_data.get("obj", [])
+                inbound = next((i for i in inbounds if i.get("id") == self.node.inbound_id), {})
+                settings = _parse_json_field(inbound.get("settings"))
+                clients = settings.get("clients", [])
             existing = next(
                 (
                     client
