@@ -26,7 +26,7 @@ ufw enable
 ## 4. Установка 3x-ui
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls "https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh") v3.0.1
 ```
 
 При установке задайте:
