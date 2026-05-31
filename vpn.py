@@ -326,9 +326,16 @@ class XuiClient:
     def __init__(self, node: XuiNode):
         self.node = node
         self.verify_ssl = _bool_env("VPN_VERIFY_SSL", False)
+        self._csrf_token: str | None = None
 
     async def _request(self, session: aiohttp.ClientSession, method: str, path: str, **kwargs) -> Any:
         url = f"{self.node.panel_url}{path}"
+        if method.upper() == "POST" and hasattr(self, "_csrf_token") and self._csrf_token:
+            extra_headers = {"X-CSRF-Token": self._csrf_token}
+            if "headers" in kwargs:
+                kwargs["headers"] = {**extra_headers, **kwargs["headers"]}
+            else:
+                kwargs["headers"] = extra_headers
         async with session.request(method, url, ssl=self.verify_ssl, **kwargs) as resp:
             text = await resp.text()
             if resp.status >= 400:
@@ -353,8 +360,8 @@ class XuiClient:
 
     async def _login(self, session: aiohttp.ClientSession) -> None:
         payload = {"username": self.node.username, "password": self.node.password}
-        csrf_token = await self._get_csrf_token(session)
-        headers = {"X-CSRF-Token": csrf_token} if csrf_token else {}
+        self._csrf_token = await self._get_csrf_token(session)
+        headers = {"X-CSRF-Token": self._csrf_token} if self._csrf_token else {}
         try:
             data = await self._request(session, "POST", "/login", json=payload, headers=headers)
             if data.get("success") is not False:
