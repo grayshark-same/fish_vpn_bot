@@ -256,7 +256,7 @@ async def _get_crypt5_url(sub_url: str) -> str:
             async with session.post(
                 "https://crypto.happ.su/api-v2.php",
                 json={"url": sub_url},
-                timeout=aiohttp.ClientTimeout(total=10),
+                timeout=aiohttp.ClientTimeout(total=3),
             ) as resp:
                 if resp.status == 200:
                     data = await resp.json(content_type=None)

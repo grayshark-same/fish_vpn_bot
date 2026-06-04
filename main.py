@@ -367,6 +367,15 @@ async def test_archive_command(message: Message):
         await message.answer(f'❌ Ошибка: {e}')
 
 
+async def _bg_sync(tg_id: int, end_date, username, platform: str | None = None):
+    try:
+        await ensure_vpn_account(tg_id, end_date, username)
+        if platform:
+            await upsert_device(tg_id, platform)
+    except Exception as e:
+        print(f'[bg_sync ERROR] {type(e).__name__}: {e}')
+
+
 @dp.message(Command('admin'))
 async def admin_command(message: Message):
     if str(message.from_user.id) in admins:
@@ -450,12 +459,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         is_active, end_date = await get_user_sub(user.id)
         sub_url = None
         if is_active and end_date:
-            try:
-                await ensure_vpn_account(user.id, end_date, user.username)
-                await upsert_device(user.id, platform)
-                sub_url = get_subscription_url(user.id, user.username)
-            except Exception as e:
-                print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
+            sub_url = get_subscription_url(user.id, user.username)
+            import asyncio
+            asyncio.create_task(_bg_sync(user.id, end_date, user.username, platform))
 
         sub_line = f"\n\n🔗 Ссылка для вставки в Happ:\n<code>{sub_url}</code>" if (platform == 'windows' and sub_url) else ""
         text = (
@@ -527,12 +533,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         if not is_active or not end_date:
             await callback.answer("Сначала продлите подписку.", show_alert=True)
             return
-        try:
-            sub_url = await ensure_vpn_account(user.id, end_date, user.username)
-        except Exception as e:
-            print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
-            await callback.answer("Не удалось подготовить подписку. Напишите в поддержку.", show_alert=True)
-            return
+        sub_url = get_subscription_url(user.id, user.username)
+        import asyncio
+        asyncio.create_task(_bg_sync(user.id, end_date, user.username))
         text = (
             "📋 <b>Универсальная ссылка</b>\n\n"
             f"<code>{sub_url}</code>\n\n"
