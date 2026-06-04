@@ -270,9 +270,9 @@ async def _get_crypt5_url(sub_url: str) -> str:
     return f"happ://add/{sub_url}"
 
 
-async def get_happ_activation_url(tg_id: int, username: str | None = None) -> str:
+def get_happ_activation_url(tg_id: int, username: str | None = None) -> str:
     sub_url = get_subscription_url(tg_id, username)
-    happ_url = await _get_crypt5_url(sub_url)
+    happ_url = f"happ://add/{sub_url}"
     return f"{PUBLIC_SUB_URL}/redirect?to={quote(happ_url, safe='')}"
 
 

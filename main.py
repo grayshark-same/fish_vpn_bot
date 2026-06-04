@@ -477,7 +477,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             rows.append([InlineKeyboardButton(text='📥 Скачать Happ (RU App Store)', url='https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973')])
         if sub_url: 
             try:
-                happ_url = await get_happ_activation_url(user.id, user.username)
+                happ_url = get_happ_activation_url(user.id, user.username)
                 rows.append([InlineKeyboardButton(text='🔗 Активировать VPN-профиль', url=happ_url)])
             except Exception as e:
                 print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
@@ -541,7 +541,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             f"<code>{sub_url}</code>\n\n"
             "Эта ссылка содержит все доступные серверы и действует до конца подписки."
         )
-        happ_url = await get_happ_activation_url(user.id, user.username)
+        happ_url = get_happ_activation_url(user.id, user.username)
         await edit_or_answer(callback, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text='🔗 Активировать в Happ', url=happ_url)],
             [back_btn('settings')[0]]
