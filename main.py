@@ -406,9 +406,11 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         return
 
     if data == 'menu':
+        await callback.answer()
         await send_main_menu(callback, user.id, user.username)
 
     elif data == 'settings':
+        await callback.answer()
         text = (
             "📍Главное меню » <tg-emoji emoji-id='6032742198179532882'>⚙️</tg-emoji> <b>Управление подпиской</b>\n\n"
             "🔗 <b>Подключение</b> — выберите платформу, затем автонастройку Happ.\n\n"
@@ -424,6 +426,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data == 'connect':
+        await callback.answer()
         text = "📍Главное меню » <tg-emoji emoji-id='6032742198179532882'>⚙️</tg-emoji> Управление подпиской » 🔗 <b>Подключиться к VPN</b>\n\nВыберите устройство:"
         buttons = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text='Android', callback_data='connect_android', icon_custom_emoji_id='6030400221232501136'),
@@ -435,6 +438,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data.startswith('connect_'):
+        await callback.answer()
         platform = data.replace('connect_', '')
         info = {
             'android': ("<tg-emoji emoji-id='6030400221232501136'>🤖</tg-emoji> Android", 'https://play.google.com/store/apps/details?id=com.happproxy'),
@@ -518,6 +522,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         await edit_or_answer(callback, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
     elif data == 'universal_link':
+        await callback.answer()
         is_active, end_date = await get_user_sub(user.id)
         if not is_active or not end_date:
             await callback.answer("Сначала продлите подписку.", show_alert=True)

@@ -330,6 +330,7 @@ class XuiClient:
 
     async def _request(self, session: aiohttp.ClientSession, method: str, path: str, **kwargs) -> Any:
         url = f"{self.node.panel_url}{path}"
+        kwargs.setdefault("timeout", aiohttp.ClientTimeout(total=15))
         if method.upper() == "POST" and hasattr(self, "_csrf_token") and self._csrf_token:
             extra_headers = {"X-CSRF-Token": self._csrf_token}
             if "headers" in kwargs:
