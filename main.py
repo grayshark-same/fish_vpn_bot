@@ -945,7 +945,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             await edit_or_answer(text=f'✅ Рассылка отправлена {count} пользователям.', callback=callback)
         elif data == 'nl_cancel':
             await state.clear()
-            await callback.message.edit_or_answer(callback, '❌ Рассылка отменена.')
+            await edit_or_answer(callback, '❌ Рассылка отменена.')
 
 
 
