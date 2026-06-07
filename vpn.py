@@ -689,12 +689,10 @@ async def handle_subscription(request: web.Request) -> web.Response:
                 headers["subscription-userinfo"] = f"upload=0; download=0; total=0; expire={expire}"
             except Exception:
                 pass
-    json_configs = await build_json_subscription(token)
-    if json_configs is not None:
-        body = json.dumps(json_configs, ensure_ascii=False)
-        return web.Response(text=body, content_type="application/json", headers=headers)
     body = await build_merged_subscription(token)
-    return web.Response(text=body, content_type="text/plain", headers=headers)
+    if body:
+        return web.Response(text=body, content_type="text/plain", headers=headers)
+    return web.Response(text="", content_type="text/plain", headers=headers)
 
 
 async def handle_redirect(request: web.Request) -> web.Response:
