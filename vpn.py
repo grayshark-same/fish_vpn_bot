@@ -256,7 +256,7 @@ async def _get_crypt5_url(sub_url: str) -> str:
             async with session.post(
                 "https://crypto.happ.su/api-v2.php",
                 json={"url": sub_url},
-                timeout=aiohttp.ClientTimeout(total=3),
+                timeout=aiohttp.ClientTimeout(total=10),
             ) as resp:
                 if resp.status == 200:
                     data = await resp.json(content_type=None)
@@ -270,9 +270,9 @@ async def _get_crypt5_url(sub_url: str) -> str:
     return f"happ://add/{sub_url}"
 
 
-def get_happ_activation_url(tg_id: int, username: str | None = None) -> str:
+async def get_happ_activation_url(tg_id: int, username: str | None = None) -> str:
     sub_url = get_subscription_url(tg_id, username)
-    happ_url = f"happ://add/{sub_url}"
+    happ_url = await _get_crypt5_url(sub_url)
     return f"{PUBLIC_SUB_URL}/redirect?to={quote(happ_url, safe='')}"
 
 
@@ -330,7 +330,6 @@ class XuiClient:
 
     async def _request(self, session: aiohttp.ClientSession, method: str, path: str, **kwargs) -> Any:
         url = f"{self.node.panel_url}{path}"
-        kwargs.setdefault("timeout", aiohttp.ClientTimeout(total=15))
         if method.upper() == "POST" and hasattr(self, "_csrf_token") and self._csrf_token:
             extra_headers = {"X-CSRF-Token": self._csrf_token}
             if "headers" in kwargs:

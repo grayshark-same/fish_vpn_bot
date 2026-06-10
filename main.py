@@ -367,15 +367,6 @@ async def test_archive_command(message: Message):
         await message.answer(f'❌ Ошибка: {e}')
 
 
-async def _bg_sync(tg_id: int, end_date, username, platform: str | None = None):
-    try:
-        await ensure_vpn_account(tg_id, end_date, username)
-        if platform:
-            await upsert_device(tg_id, platform)
-    except Exception as e:
-        print(f'[bg_sync ERROR] {type(e).__name__}: {e}')
-
-
 @dp.message(Command('admin'))
 async def admin_command(message: Message):
     if str(message.from_user.id) in admins:
@@ -415,11 +406,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         return
 
     if data == 'menu':
-        await callback.answer()
         await send_main_menu(callback, user.id, user.username)
 
     elif data == 'settings':
-        await callback.answer()
         text = (
             "📍Главное меню » <tg-emoji emoji-id='6032742198179532882'>⚙️</tg-emoji> <b>Управление подпиской</b>\n\n"
             "🔗 <b>Подключение</b> — выберите платформу, затем автонастройку Happ.\n\n"
@@ -435,7 +424,6 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data == 'connect':
-        await callback.answer()
         text = "📍Главное меню » <tg-emoji emoji-id='6032742198179532882'>⚙️</tg-emoji> Управление подпиской » 🔗 <b>Подключиться к VPN</b>\n\nВыберите устройство:"
         buttons = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text='Android', callback_data='connect_android', icon_custom_emoji_id='6030400221232501136'),
@@ -447,7 +435,6 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data.startswith('connect_'):
-        await callback.answer()
         platform = data.replace('connect_', '')
         info = {
             'android': ("<tg-emoji emoji-id='6030400221232501136'>🤖</tg-emoji> Android", 'https://play.google.com/store/apps/details?id=com.happproxy'),
@@ -459,9 +446,12 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         is_active, end_date = await get_user_sub(user.id)
         sub_url = None
         if is_active and end_date:
-            sub_url = get_subscription_url(user.id, user.username)
-            import asyncio
-            asyncio.create_task(_bg_sync(user.id, end_date, user.username, platform))
+            try:
+                await ensure_vpn_account(user.id, end_date, user.username)
+                await upsert_device(user.id, platform)
+                sub_url = get_subscription_url(user.id, user.username)
+            except Exception as e:
+                print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
 
         sub_line = f"\n\n🔗 Ссылка для вставки в Happ:\n<code>{sub_url}</code>" if (platform == 'windows' and sub_url) else ""
         text = (
@@ -477,7 +467,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             rows.append([InlineKeyboardButton(text='📥 Скачать Happ (RU App Store)', url='https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973')])
         if sub_url: 
             try:
-                happ_url = get_happ_activation_url(user.id, user.username)
+                happ_url = await get_happ_activation_url(user.id, user.username)
                 rows.append([InlineKeyboardButton(text='🔗 Активировать VPN-профиль', url=happ_url)])
             except Exception as e:
                 print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
@@ -528,20 +518,22 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         await edit_or_answer(callback, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
 
     elif data == 'universal_link':
-        await callback.answer()
         is_active, end_date = await get_user_sub(user.id)
         if not is_active or not end_date:
             await callback.answer("Сначала продлите подписку.", show_alert=True)
             return
-        sub_url = get_subscription_url(user.id, user.username)
-        import asyncio
-        asyncio.create_task(_bg_sync(user.id, end_date, user.username))
+        try:
+            sub_url = await ensure_vpn_account(user.id, end_date, user.username)
+        except Exception as e:
+            print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
+            await callback.answer("Не удалось подготовить подписку. Напишите в поддержку.", show_alert=True)
+            return
         text = (
             "📋 <b>Универсальная ссылка</b>\n\n"
             f"<code>{sub_url}</code>\n\n"
             "Эта ссылка содержит все доступные серверы и действует до конца подписки."
         )
-        happ_url = get_happ_activation_url(user.id, user.username)
+        happ_url = await get_happ_activation_url(user.id, user.username)
         await edit_or_answer(callback, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text='🔗 Активировать в Happ', url=happ_url)],
             [back_btn('settings')[0]]
@@ -945,7 +937,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             await edit_or_answer(callback, f'✅ Рассылка отправлена {count} пользователям.')
         elif data == 'nl_cancel':
             await state.clear()
-            await edit_or_answer(callback, '❌ Рассылка отменена.')
+            await callback.message.edit_or_answer(callback, '❌ Рассылка отменена.')
 
 
 
