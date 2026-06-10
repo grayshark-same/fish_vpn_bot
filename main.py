@@ -942,7 +942,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             await state.clear()
             await edit_or_answer(callback, '📤 Рассылка запущена...')
             count = await _do_newsletter(fsm_data)
-            await edit_or_answer(text=f'✅ Рассылка отправлена {count} пользователям.', callback=callback)
+            await edit_or_answer(callback, f'✅ Рассылка отправлена {count} пользователям.')
         elif data == 'nl_cancel':
             await state.clear()
             await edit_or_answer(callback, '❌ Рассылка отменена.')
@@ -1002,7 +1002,7 @@ async def _do_newsletter(fsm_data: dict) -> int:
 
 @dp.message(States.newsletter_text)
 async def newsletter_get_text(message: Message, state: FSMContext):
-    await state.update_data(nl_text=message.text or message.caption or '')
+    await state.update_data(nl_text=message.html_text or message.caption_html or '')
     await state.set_state(States.newsletter_photo)
     await message.answer(
         '🖼 Прикрепите фото или нажмите «Пропустить»:',

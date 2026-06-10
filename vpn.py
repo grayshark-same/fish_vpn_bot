@@ -454,16 +454,17 @@ def _build_node_link(node: XuiNode, account: dict[str, str]) -> str | None:
     }
     if node.security == "reality":
         short_id = _first_short_id(node.short_id)
-        if not node.public_key or not short_id:
+        if not node.public_key:
             return None
         params.update(
             {
                 "pbk": node.public_key,
                 "fp": node.fingerprint,
                 "sni": node.sni,
-                "sid": short_id,
             }
         )
+        if short_id:
+            params["sid"] = short_id
         if node.flow:
             params["flow"] = node.flow
         if node.network == "tcp" and node.spider_x:
