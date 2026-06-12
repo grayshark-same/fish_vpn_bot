@@ -1341,10 +1341,34 @@ async def expiry_reminder_loop():
             print(f'[expiry reminder loop ERROR] {type(e).__name__}: {e}')
 
 
+async def db_backup_loop():
+    import asyncio
+    from aiogram.types import BufferedInputFile
+    while True:
+        now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
+        target = now.replace(hour=15, minute=0, second=0, microsecond=0)
+        if now >= target:
+            target += datetime.timedelta(days=1)
+        await asyncio.sleep((target - now).total_seconds())
+        try:
+            for db_path, name in [(USERS_DB, 'users.db'), (REPORTS_DB, 'reports.db')]:
+                with open(db_path, 'rb') as f:
+                    data = f.read()
+                date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+                await bot.send_document(
+                    ARCHIVE_CHAT_ID,
+                    BufferedInputFile(data, filename=f'{date_str}_{name}'),
+                    caption=f'🗄 Бэкап БД {date_str}'
+                )
+        except Exception as e:
+            print(f'[db backup ERROR] {type(e).__name__}: {e}')
+
+
 async def on_startup(*args, **kwargs):
     import asyncio
     await start_subscription_server()
     asyncio.create_task(expiry_reminder_loop())
+    asyncio.create_task(db_backup_loop())
 
 
 dp.startup.register(on_startup)
