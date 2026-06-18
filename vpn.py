@@ -375,7 +375,7 @@ class XuiClient:
     async def sync_client(self, tg_id: int, account: dict[str, str], end_date: datetime.datetime) -> None:
         if not self.node.panel_url or not self.node.username or not self.node.password or not self.node.inbound_id:
             raise RuntimeError(f"{self.node.name}: 3x-ui panel is not fully configured")
-        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+        async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True), timeout=aiohttp.ClientTimeout(total=8)) as session:
             await self._login(session)
             # try new API (v3.1+), fallback to old
             try:
@@ -430,7 +430,7 @@ async def ensure_vpn_account(tg_id: int, end_date: datetime.datetime, username: 
     nodes = _load_nodes()
     if not nodes:
         raise RuntimeError("VPN nodes are not configured")
-    for node in nodes:
+    async def _sync_node(node):
         node_account = _get_or_create_node_account(tg_id, node, username)
         if node.panel_url and node.username and node.password and node.inbound_id:
             try:
@@ -439,6 +439,8 @@ async def ensure_vpn_account(tg_id: int, end_date: datetime.datetime, username: 
                 print(f"[vpn] panel sync failed for {node.name}: {e}")
         elif not _build_node_link(node, node_account) and not node.sub_base_url:
             print(f"[vpn] skipping {node.name}: no panel and no direct link fields")
+
+    await asyncio.gather(*[_sync_node(node) for node in nodes])
     return get_subscription_url(tg_id, username)
 
 
