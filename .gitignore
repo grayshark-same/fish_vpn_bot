@@ -1,6 +1,8 @@
 \venv
 .env
 users.db
+users.db-journal
+*.db-journal
 \__pycache__
 reports.db
 \3x-ui
