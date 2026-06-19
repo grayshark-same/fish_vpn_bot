@@ -424,6 +424,17 @@ class XuiClient:
                     await self._request(session, "POST", "/panel/api/inbounds/addClient", json=old_body)
 
 
+def prepare_vpn_account(tg_id: int, username: str | None = None) -> str:
+    """Create account in local DB and return sub URL immediately (no panel sync)."""
+    if not PUBLIC_SUB_URL:
+        raise RuntimeError("PUBLIC_SUB_URL is not set")
+    _get_or_create_account(tg_id, username)
+    nodes = _load_nodes()
+    for node in nodes:
+        _get_or_create_node_account(tg_id, node, username)
+    return get_subscription_url(tg_id, username)
+
+
 async def ensure_vpn_account(tg_id: int, end_date: datetime.datetime, username: str | None = None) -> str:
     if not PUBLIC_SUB_URL:
         raise RuntimeError("PUBLIC_SUB_URL is not set")

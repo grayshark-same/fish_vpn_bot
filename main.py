@@ -14,8 +14,8 @@ from platega import create_platega_transaction, check_platega_status
 from vpn import (
     ensure_vpn_account,
     get_happ_activation_url,
-    get_subscription_url,
     init_vpn_db,
+    prepare_vpn_account,
     start_subscription_server,
 )
 import sqlite3
@@ -447,9 +447,9 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         sub_url = None
         if is_active and end_date:
             try:
-                await ensure_vpn_account(user.id, end_date, user.username)
+                sub_url = prepare_vpn_account(user.id, user.username)
                 await upsert_device(user.id, platform)
-                sub_url = get_subscription_url(user.id, user.username)
+                asyncio.create_task(ensure_vpn_account(user.id, end_date, user.username))
             except Exception as e:
                 print(f'[vpn sync ERROR] {type(e).__name__}: {e}')
 
@@ -465,7 +465,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             rows.append([InlineKeyboardButton(text='📥 Скачать Happ (US App Store)', url=download_url)])
         if platform == 'ios':
             rows.append([InlineKeyboardButton(text='📥 Скачать Happ (RU App Store)', url='https://apps.apple.com/ru/app/happ-proxy-utility-plus/id6746188973')])
-        if sub_url: 
+        if sub_url:
             try:
                 happ_url = await get_happ_activation_url(user.id, user.username)
                 rows.append([InlineKeyboardButton(text='🔗 Активировать VPN-профиль', url=happ_url)])
