@@ -125,6 +125,10 @@ async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, 
 ARCHIVE_CHAT_ID = os.getenv('ARCHIVE_CHAT_ID')
 CHANNEL_ID = os.getenv('CHANNEL_ID')
 CHANNEL_URL = os.getenv('CHANNEL_URL')
+MTPROTO_HOST = os.getenv('MTPROTO_HOST')
+MTPROTO_PORT = os.getenv('MTPROTO_PORT')
+MTPROTO_SECRET = os.getenv('MTPROTO_SECRET')
+MTPROTO_LINK = f"https://t.me/proxy?server={MTPROTO_HOST}&port={MTPROTO_PORT}&secret={MTPROTO_SECRET}" if MTPROTO_HOST else None
 
 _sub_required_text = (
     '<tg-emoji emoji-id="6021418126061605425">📢</tg-emoji>  Для использования бота подпишитесь на <a href="http://t.me/FishVPN_info">наш канал</a>.\n\n'
@@ -177,7 +181,8 @@ async def send_main_menu(target, user_id, username=None):
         [InlineKeyboardButton(text='Реферальная система', callback_data='referral', icon_custom_emoji_id='6033125983572201397')],
         [InlineKeyboardButton(text='Продлить', callback_data='extend', icon_custom_emoji_id='5769126056262898415'),
          InlineKeyboardButton(text='Поддержка', callback_data='support', icon_custom_emoji_id='6030329749409108167')],
-        [InlineKeyboardButton(text='Что это?', callback_data='about', icon_custom_emoji_id='6032594876506312598')]
+        [InlineKeyboardButton(text='Что это?', callback_data='about', icon_custom_emoji_id='6032594876506312598')],
+        *([[InlineKeyboardButton(text='📡 Telegram Прокси', callback_data='mtproto')]] if MTPROTO_LINK else [])
     ])
     photo = FSInputFile('menu.png')
     if isinstance(target, CallbackQuery):
@@ -735,6 +740,18 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         )
         buttons = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text='Поддержка', url=f'https://t.me/{support.lstrip("@")}', icon_custom_emoji_id='6030329749409108167')],
+            [back_menu_btn()[0]]
+        ])
+        await edit_or_answer(callback, text, reply_markup=buttons)
+
+    elif data == 'mtproto':
+        text = (
+            "📍Главное меню » <b>📡 Telegram Прокси</b>\n\n"
+            "Прокси для Telegram — если приложение не работает без VPN.\n\n"
+            "Нажмите кнопку ниже чтобы подключить прокси прямо в Telegram."
+        )
+        buttons = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='📡 Подключить прокси', url=MTPROTO_LINK)],
             [back_menu_btn()[0]]
         ])
         await edit_or_answer(callback, text, reply_markup=buttons)
