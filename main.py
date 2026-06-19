@@ -128,7 +128,7 @@ CHANNEL_URL = os.getenv('CHANNEL_URL')
 MTPROTO_HOST = os.getenv('MTPROTO_HOST')
 MTPROTO_PORT = os.getenv('MTPROTO_PORT')
 MTPROTO_SECRET = os.getenv('MTPROTO_SECRET')
-MTPROTO_LINK = f"https://t.me/proxy?server={MTPROTO_HOST}&port={MTPROTO_PORT}&secret={MTPROTO_SECRET}" if MTPROTO_HOST else None
+MTPROTO_LINK = f"https://t.me/proxy?server={MTPROTO_HOST}&port={MTPROTO_PORT}&secret={MTPROTO_SECRET}" if all([MTPROTO_HOST, MTPROTO_PORT, MTPROTO_SECRET]) else None
 
 _sub_required_text = (
     '<tg-emoji emoji-id="6021418126061605425">📢</tg-emoji>  Для использования бота подпишитесь на <a href="http://t.me/FishVPN_info">наш канал</a>.\n\n'
@@ -182,7 +182,6 @@ async def send_main_menu(target, user_id, username=None):
         [InlineKeyboardButton(text='Продлить', callback_data='extend', icon_custom_emoji_id='5769126056262898415'),
          InlineKeyboardButton(text='Поддержка', callback_data='support', icon_custom_emoji_id='6030329749409108167')],
         [InlineKeyboardButton(text='Что это?', callback_data='about', icon_custom_emoji_id='6032594876506312598')],
-        *([[InlineKeyboardButton(text='📡 Telegram Прокси', callback_data='mtproto')]] if MTPROTO_LINK else [])
     ])
     photo = FSInputFile('menu.png')
     if isinstance(target, CallbackQuery):
@@ -420,12 +419,15 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             "📱 <b>Мои устройства</b> — список привязанных устройств.\n\n"
             "📋 <b>Универсальная ссылка</b> — строка подписки для вставки в Happ и другие клиенты."
         )
-        buttons = InlineKeyboardMarkup(inline_keyboard=[
+        rows = [
             [InlineKeyboardButton(text='🔗 Подключиться к VPN', callback_data='connect')],
             [InlineKeyboardButton(text='📱 Мои устройства', callback_data='devices')],
             [InlineKeyboardButton(text='📋 Универсальная ссылка', callback_data='universal_link')],
-            [back_menu_btn()[0]]
-        ])
+        ]
+        if MTPROTO_LINK:
+            rows.append([InlineKeyboardButton(text='📡 Telegram Прокси', callback_data='mtproto')])
+        rows.append([back_menu_btn()[0]])
+        buttons = InlineKeyboardMarkup(inline_keyboard=rows)
         await edit_or_answer(callback, text, reply_markup=buttons)
 
     elif data == 'connect':
