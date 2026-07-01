@@ -6,7 +6,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State, default_state
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import CommandStart, Command, StateFilter
 from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from aiogram.utils.deep_linking import create_start_link, decode_payload
 from dotenv import load_dotenv
@@ -298,6 +298,25 @@ async def poll_transaction(transaction_id: str, tg_id: int, summ: int):
             return
 
 
+async def send_extend_menu(target, user_id: int):
+    _, end_date = await get_user_sub(user_id)
+    days_left = max((end_date - datetime.datetime.now()).days, 0) if end_date else 0
+    text = (
+        f"📍Главное меню » <b><tg-emoji emoji-id='5258204546391351475'>👛</tg-emoji> Продлить</b>\n\n"
+        f"<blockquote>⏳ До окончания подписки: {days_left} дней\n"
+        f"📱 Количество устройств: 3</blockquote>\n\n"
+        f"💳 <b>Выберите тариф</b>:"
+    )
+    buttons = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f'1 месяц — {plans[1]}₽', callback_data='plan_1')],
+        [InlineKeyboardButton(text=f'3 месяца — {plans[3]}₽ ({round(plans[3]/3)}₽/мес)', callback_data='plan_3')],
+        [InlineKeyboardButton(text=f'6 месяцев — {plans[6]}₽ ({round(plans[6]/6)}₽/мес)', callback_data='plan_6')],
+        [InlineKeyboardButton(text=f'⚡️12 месяцев — {plans[12]}₽ ({round(plans[12]/12)}₽/мес)', callback_data='plan_12')],
+        [back_menu_btn()[0]]
+    ])
+    await target.answer(text, reply_markup=buttons, parse_mode='HTML')
+
+
 @dp.message(Command('start'))
 async def start_handler(message: Message):
     if not await is_subscribed(message.from_user.id):
@@ -310,9 +329,15 @@ async def start_handler(message: Message):
     is_new = await add_user(message.from_user.id, message.from_user.username)
     args = message.text.split() if message.text else []
     ref_id_from_link = 0
-    if len(args) > 1 and args[1].isdigit():
-        ref_id_from_link = int(args[1])
-        await set_ref_id(message.from_user.id, ref_id_from_link)
+    if len(args) > 1:
+        if args[1].isdigit():
+            ref_id_from_link = int(args[1])
+            await set_ref_id(message.from_user.id, ref_id_from_link)
+        elif args[1] == 'extend':
+            await send_main_menu(message, message.from_user.id, message.from_user.username)
+            await send_extend_menu(message, message.from_user.id)
+            return
+
     if is_new and ref_id_from_link and ref_id_from_link != message.from_user.id:
         uname = f"@{message.from_user.username}" if message.from_user.username else f"ID {message.from_user.id}"
         try:
@@ -395,7 +420,7 @@ async def admin_command(message: Message):
 async def callbacks(callback: CallbackQuery, state: FSMContext):
     data = callback.data
     user = callback.from_user
-
+ 
     if data == 'check_sub':
         if await is_subscribed(user.id):
             await add_user(user.id, user.username)
@@ -551,22 +576,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
         ]))
 
     elif data == 'extend':
-        _, end_date = await get_user_sub(user.id)
-        days_left = max((end_date - datetime.datetime.now()).days, 0) if end_date else 0
-        text = (
-            f"📍Главное меню » <b><tg-emoji emoji-id='5258204546391351475'>👛</tg-emoji> Продлить</b>\n\n"
-            f"<blockquote>⏳ До окончания подписки: {days_left} дней\n"
-            f"📱 Количество устройств: 3</blockquote>\n\n"
-            f"💳 <b>Выберите тариф</b>:"
-        )
-        buttons = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f'1 месяц — {plans[1]}₽', callback_data='plan_1')],
-            [InlineKeyboardButton(text=f'3 месяца — {plans[3]}₽ ({round(plans[3]/3)}₽/мес)', callback_data='plan_3')],
-            [InlineKeyboardButton(text=f'6 месяцев — {plans[6]}₽ ({round(plans[6]/6)}₽/мес)', callback_data='plan_6')],
-            [InlineKeyboardButton(text=f'⚡️12 месяцев — {plans[12]}₽ ({round(plans[12]/12)}₽/мес)', callback_data='plan_12')],
-            [back_menu_btn()[0]]
-        ])
-        await edit_or_answer(callback, text, reply_markup=buttons)
+        await send_extend_menu(callback.message, user.id)
 
     elif data.startswith('plan_'):
         plan = int(data.replace('plan_', ''))
