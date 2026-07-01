@@ -1,3 +1,4 @@
+import asyncio
 import os
 import datetime
 from aiogram import Dispatcher, Bot, F
@@ -114,7 +115,10 @@ class States(StatesGroup):
 async def edit_or_answer(callback: CallbackQuery, text: str, reply_markup=None, parse_mode='HTML'):
     try:
         if callback.message.photo:
-            await callback.message.delete()
+            try:
+                await callback.message.delete()
+            except Exception:
+                pass
             await callback.message.answer(text, reply_markup=reply_markup, parse_mode=parse_mode)
         else:
             await callback.message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
@@ -247,7 +251,7 @@ async def _archive_purchase(tg_id: int, summ: int, plan: int, username: str | No
 
 
 async def poll_transaction(transaction_id: str, tg_id: int, summ: int):
-    import asyncio
+
     for _ in range(90):  # 90 * 10s = 15 минут
         await asyncio.sleep(10)
         status = await check_platega_status(transaction_id)
@@ -670,7 +674,7 @@ async def callbacks(callback: CallbackQuery, state: FSMContext):
             transaction = await create_platega_transaction(summ, user.id, pm)
             pay_url = (transaction.get('url') or transaction.get('redirect')) if transaction else None
             if pay_url:
-                import asyncio
+            
                 transaction_id = transaction['transactionId']
                 asyncio.create_task(poll_transaction(transaction_id, user.id, summ))
                 await state.update_data(check_transaction_id=transaction_id, check_summ=summ)
@@ -1054,7 +1058,7 @@ async def summ_handler(message: Message, state: FSMContext):
     transaction = await create_platega_transaction(summ, message.from_user.id, pm)
     pay_url = (transaction.get('url') or transaction.get('redirect')) if transaction else None
     if pay_url:
-        import asyncio
+    
         transaction_id = transaction['transactionId']
         asyncio.create_task(poll_transaction(transaction_id, message.from_user.id, summ))
         await state.update_data(check_transaction_id=transaction_id, check_summ=summ)
@@ -1351,7 +1355,7 @@ async def check_expiring_subscriptions():
 
 
 async def expiry_reminder_loop():
-    import asyncio
+
     while True:
         await asyncio.sleep(3600)
         try:
@@ -1361,7 +1365,7 @@ async def expiry_reminder_loop():
 
 
 async def db_backup_loop():
-    import asyncio
+
     from aiogram.types import BufferedInputFile
     while True:
         now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
@@ -1384,7 +1388,7 @@ async def db_backup_loop():
 
 
 async def on_startup(*args, **kwargs):
-    import asyncio
+
     await start_subscription_server()
     asyncio.create_task(expiry_reminder_loop())
     asyncio.create_task(db_backup_loop())

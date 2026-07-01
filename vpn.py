@@ -47,6 +47,8 @@ class XuiNode:
     flag: str
     fixed_uuid: str
     mode: str
+    fixed_password: str
+    protocol: str
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -100,6 +102,8 @@ def _load_nodes() -> list[XuiNode]:
                 flag=os.getenv(prefix + "FLAG", "").strip(),
                 fixed_uuid=os.getenv(prefix + "FIXED_UUID", "").strip(),
                 mode=os.getenv(prefix + "MODE", "").strip(),
+                fixed_password=os.getenv(prefix + "FIXED_PASSWORD", "").strip(),
+                protocol=os.getenv(prefix + "PROTOCOL", "vless").strip().lower(),
             )
         )
     return nodes
@@ -503,6 +507,11 @@ def _build_node_link(node: XuiNode, account: dict[str, str]) -> str | None:
     query = urlencode({k: v for k, v in params.items() if v}, quote_via=quote)
     display_name = f"{node.flag} {node.profile_name}" if node.flag else node.profile_name
     label = quote(display_name, safe="")
+    if node.protocol == "trojan":
+        password = node.fixed_password
+        if not password:
+            return None
+        return f"trojan://{password}@{node.host}:{node.port}?{query}#{label}"
     return f"vless://{_resolve_uuid(node, account)}@{node.host}:{node.port}?{query}#{label}"
 
 
